@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "CLI-launched local Git inspector",
   "type": "module",
-  "private": true,
   "main": "dist/main.js",
   "bin": {
     "diff-worktree": "dist/main.js"
