@@ -8,6 +8,7 @@
   "bin": {
     "diff-worktree": "dist/main.js"
   },
+  "files": ["dist"],
   "scripts": {
     "dev": "tsx src/cli/main.ts",
     "build": "pnpm run build:server && pnpm run build:frontend && node scripts/copy-frontend-dist.mjs",
