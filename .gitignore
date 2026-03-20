@@ -1,0 +1,10 @@
+.worktrees/
+.superpowers/
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+src/frontend/vite.config.js
+src/frontend/vite.config.d.ts
+.idea/
+.pnpm-store/

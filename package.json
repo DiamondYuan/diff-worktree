@@ -1,0 +1,36 @@
+{
+  "name": "diff-worktree",
+  "version": "0.1.0",
+  "description": "CLI-launched local Git inspector",
+  "type": "module",
+  "private": true,
+  "main": "dist/main.js",
+  "bin": {
+    "diff-worktree": "dist/main.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli/main.ts",
+    "build": "pnpm run build:server && pnpm run build:frontend && node scripts/copy-frontend-dist.mjs",
+    "build:server": "tsup",
+    "build:frontend": "pnpm --dir src/frontend run build",
+    "test": "vitest run"
+  },
+  "packageManager": "pnpm@10.26.2",
+  "dependencies": {
+    "cac": "^6.7.14",
+    "express": "^5.1.0",
+    "open": "^10.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.5.2",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3",
+    "jsdom": "^26.1.0",
+    "vitest": "^3.2.4"
+  }
+}
