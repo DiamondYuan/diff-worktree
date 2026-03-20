@@ -7,7 +7,7 @@ import { findRepoRoot } from "../../server/services/repoLocator";
 
 function resolvePort(value?: string): number {
   if (!value) {
-    return 4867;
+    return 0;
   }
 
   const port = Number.parseInt(value, 10);
@@ -40,7 +40,9 @@ export function registerStartCommand(cli: CAC) {
         nextServer.on("error", reject);
       });
 
-      const url = `http://localhost:${port}`;
+      const addr = server.address();
+      const actualPort = typeof addr === "object" && addr ? addr.port : port;
+      const url = `http://localhost:${actualPort}`;
       if (options.open !== false) {
         await open(url);
       }

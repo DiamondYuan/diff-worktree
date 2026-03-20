@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { getBranches, getDiffFile, getDiffTree, getRepoSummary, refreshRepo, saveWorkspaceFile } from "./api/client";
+import { getBranches, getDiffFile, getDiffTree, getRepoSummary, refreshRepo, saveWorkspaceFile, useRemoteVersion } from "./api/client";
 import { BranchPane } from "./components/BranchPane";
 import { DiffTreePane } from "./components/DiffTreePane";
 import { DiffViewerPane } from "./components/DiffViewerPane";
@@ -309,6 +309,21 @@ export function App() {
     }
   }
 
+  async function handleUseRemote(filePath: string) {
+    if (!selectedBranch) {
+      return;
+    }
+
+    try {
+      await useRemoteVersion(selectedBranch, filePath);
+      setTreeReloadNonce((current) => current + 1);
+      setDiffReloadNonce((current) => current + 1);
+      setError(undefined);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to use remote version.");
+    }
+  }
+
   function handleSelectTreeItem(node: DiffTreeNode) {
     setSelectedTreePath(node.path);
 
@@ -339,6 +354,7 @@ export function App() {
         nodes={diffTree}
         onSelectFile={setSelectedFilePath}
         onSelectItem={handleSelectTreeItem}
+        onUseRemote={handleUseRemote}
         selectedBranch={selectedBranch}
         selectedPath={selectedTreePath}
         selectedFilePath={selectedFilePath}

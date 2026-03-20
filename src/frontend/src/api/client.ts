@@ -40,6 +40,14 @@ export function saveWorkspaceFile(path: string, content: string) {
   });
 }
 
+export function useRemoteVersion(baseBranch: string, filePath: string) {
+  return requestJson<{ ok: true }>("/api/use-remote", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ baseBranch, path: filePath }),
+  });
+}
+
 export function refreshRepo() {
   return requestJson<{ branches: BranchStatus[] }>("/api/refresh", {
     method: "POST",

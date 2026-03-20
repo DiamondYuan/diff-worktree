@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -64,6 +66,7 @@ export async function listLocalBranches(repoRoot: string): Promise<BranchStatus[
   const currentBranch = await getCurrentBranch(repoRoot);
   const output = await runGit(repoRoot, [
     "for-each-ref",
+    "--sort=-committerdate",
     "--format=%(refname:short)\t%(upstream:short)\t%(objectname)\t%(contents:subject)\t%(committerdate:iso-strict)",
     "refs/heads",
   ]);
@@ -106,4 +109,28 @@ export async function listLocalBranches(repoRoot: string): Promise<BranchStatus[
       };
     }),
   );
+}
+
+async function runGitBuffer(repoRoot: string, args: string[]) {
+  const { stdout } = await execFileAsync("git", args, {
+    cwd: repoRoot,
+    encoding: "buffer",
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  return stdout;
+}
+
+export async function useRemoteVersion(repoRoot: string, baseBranch: string, filePath: string): Promise<void> {
+  const resolvedRoot = path.resolve(repoRoot);
+  const resolvedPath = path.resolve(resolvedRoot, filePath);
+  const relativeToRoot = path.relative(resolvedRoot, resolvedPath);
+
+  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
+    throw new Error(`Path ${filePath} is outside the repository root.`);
+  }
+
+  const buffer = await runGitBuffer(repoRoot, ["show", `${baseBranch}:${filePath}`]);
+  await fs.promises.mkdir(path.dirname(resolvedPath), { recursive: true });
+  await fs.promises.writeFile(resolvedPath, buffer);
+  await runGit(repoRoot, ["add", filePath]);
 }

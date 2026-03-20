@@ -7,6 +7,7 @@ import { registerDiffFileRoute } from "./routes/diffFile";
 import { registerDiffTreeRoute } from "./routes/diffTree";
 import { registerRefreshRoute } from "./routes/refresh";
 import { registerRepoSummaryRoute } from "./routes/repoSummary";
+import { registerUseRemoteRoute } from "./routes/useRemote";
 import { registerWorkspaceFileRoute } from "./routes/workspaceFile";
 import { resolveFrontendDistPath } from "./frontendAssets";
 import { BranchPollingService } from "./services/pollingService";
@@ -36,6 +37,7 @@ export function createServer(context: ServerContext): Express {
   registerDiffTreeRoute(app, context.repoRoot);
   registerDiffFileRoute(app, context.repoRoot);
   registerWorkspaceFileRoute(app, context.repoRoot);
+  registerUseRemoteRoute(app, context.repoRoot);
   registerRefreshRoute(app, branchPollingService);
 
   if (frontendDistPath) {

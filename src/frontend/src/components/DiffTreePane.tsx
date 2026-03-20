@@ -12,12 +12,19 @@ interface DiffTreePaneProps {
   selectedBranch?: string;
   onSelectFile: (filePath: string) => void;
   onSelectItem?: (node: DiffTreeNode) => void;
+  onUseRemote?: (filePath: string) => void;
 }
 
 interface VisibleTreeNode {
   node: DiffTreeNode;
   depth: number;
   parentPath?: string;
+}
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  filePath: string;
 }
 
 function statusLabel(node: DiffTreeNode) {
@@ -110,8 +117,10 @@ export function DiffTreePane({
   selectedBranch,
   onSelectFile,
   onSelectItem,
+  onUseRemote,
 }: DiffTreePaneProps) {
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
   const activePath = selectedPath ?? selectedFilePath;
   const visibleNodes = flattenVisibleNodes(nodes, collapsedPaths);
@@ -124,6 +133,20 @@ export function DiffTreePane({
   useEffect(() => {
     focusItem(itemRefs, activePath);
   }, [activePath]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+
+    const close = () => setContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("contextmenu", close);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("contextmenu", close);
+    };
+  }, [contextMenu]);
 
   function handleSelect(node: DiffTreeNode) {
     if (onSelectItem) {
@@ -250,6 +273,15 @@ export function DiffTreePane({
                     aria-label={itemAriaLabel(item.node)}
                     className={`tree-entry${isDirectory ? " tree-entry-directory" : " tree-entry-file"}${selected ? " tree-entry-selected" : ""}`}
                     onClick={() => handleSelect(item.node)}
+                    onContextMenu={
+                      !isDirectory && onUseRemote
+                        ? (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setContextMenu({ x: event.clientX, y: event.clientY, filePath: item.node.path });
+                          }
+                        : undefined
+                    }
                     onKeyDown={(event) => handleKeyDown(event, item)}
                     ref={(element) => {
                       if (element) {
@@ -285,6 +317,23 @@ export function DiffTreePane({
           </div>
         ) : null}
       </div>
+      {contextMenu && onUseRemote ? (
+        <div
+          className="context-menu"
+          style={{ position: "fixed", left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              onUseRemote(contextMenu.filePath);
+              setContextMenu(null);
+            }}
+            type="button"
+          >
+            Use Remote
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

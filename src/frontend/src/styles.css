@@ -1,10 +1,7 @@
 :root {
   color: #1f1f1f;
   background: #f3f3f3;
-  font-family:
-    "Segoe UI",
-    "Helvetica Neue",
-    sans-serif;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   line-height: 1.4;
   color-scheme: light;
 }
@@ -61,15 +58,22 @@ body {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  padding: 8px 12px;
+  padding: 0px 12px;
   text-transform: uppercase;
+  min-height: 44px;
 }
 
 .pane-body {
   color: #1f1f1f;
   min-height: 0;
-  padding: 10px 0;
-  overflow: auto;
+  padding: 6px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.pane-body::-webkit-scrollbar {
+  display: none;
 }
 
 .pane-body-diff {
@@ -140,7 +144,7 @@ body {
   color: #616161;
   font-size: 11px;
   line-height: 1.4;
-  margin: 0 12px 8px;
+  margin: 0 12px 4px;
   word-break: break-all;
 }
 
@@ -148,6 +152,10 @@ body {
 .tree-list {
   display: grid;
   gap: 2px;
+}
+
+.branch-list {
+  width: 100%;
 }
 
 .branch-item,
@@ -162,7 +170,7 @@ body {
 }
 
 .branch-item {
-  padding: 7px 12px;
+  padding: 4px 12px;
 }
 
 .branch-item-selected,
@@ -179,6 +187,18 @@ body {
   gap: 6px;
   font-size: 13px;
   font-weight: 400;
+  min-width: 0;
+}
+
+.branch-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.branch-group .branch-item {
+  padding-left: 28px;
 }
 
 .branch-item-meta {
@@ -187,9 +207,39 @@ body {
   font-size: 11px;
 }
 
+.branch-group-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #616161;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  text-align: left;
+}
+
+.branch-group-chevron {
+  transition: transform 120ms ease;
+}
+
+.branch-group-chevron-open {
+  transform: rotate(90deg);
+}
+
+.branch-group-count {
+  color: #8a8a8a;
+  font-weight: 400;
+  margin-left: auto;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   border-radius: 999px;
   padding: 1px 6px;
   font-size: 10px;
@@ -384,6 +434,32 @@ body {
 
 .diff-editor-shell > div {
   height: 100%;
+}
+
+.context-menu {
+  z-index: 1000;
+  min-width: 140px;
+  border: 1px solid #d4d4d4;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #1f1f1f;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.context-menu-item:hover {
+  background: #cce8ff;
 }
 
 .global-error {
