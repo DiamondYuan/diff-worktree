@@ -143,4 +143,20 @@ describe("DiffTreePane", () => {
 
     expect(screen.getByRole("button", { name: "src" })).toHaveFocus();
   });
+
+  it("renders the richer synced empty state when there are no changed files", () => {
+    render(
+      <DiffTreePane
+        loading={false}
+        nodes={[]}
+        onSelectFile={vi.fn()}
+        selectedBranch="main"
+      />,
+    );
+
+    expect(screen.getByText("No file changes to review")).toBeInTheDocument();
+    expect(
+      screen.getByText("The workspace currently matches main. Switch branches or make edits to inspect a new diff."),
+    ).toBeInTheDocument();
+  });
 });

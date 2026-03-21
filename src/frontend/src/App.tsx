@@ -6,6 +6,37 @@ import { DiffTreePane } from "./components/DiffTreePane";
 import { DiffViewerPane } from "./components/DiffViewerPane";
 import type { BranchStatus, DiffFilePayload, DiffTreeNode, RepoSummary } from "./types";
 
+const SESSION_SELECTED_BRANCH_KEY = "diff-worktree:selected-branch";
+const SESSION_SELECTED_FILE_KEY = "diff-worktree:selected-file";
+
+function readSessionValue(key: string): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  try {
+    return window.sessionStorage.getItem(key) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeSessionValue(key: string, value: string | undefined) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (value) {
+      window.sessionStorage.setItem(key, value);
+    } else {
+      window.sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore session storage failures and keep the app functional.
+  }
+}
+
 function findFirstFile(nodes: DiffTreeNode[]): string | undefined {
   for (const node of nodes) {
     if (node.type === "file") {
@@ -60,10 +91,10 @@ function hasNode(nodes: DiffTreeNode[], targetPath: string | undefined): boolean
 export function App() {
   const [summary, setSummary] = useState<RepoSummary | null>(null);
   const [branches, setBranches] = useState<BranchStatus[]>([]);
-  const [selectedBranch, setSelectedBranch] = useState<string>();
+  const [selectedBranch, setSelectedBranch] = useState<string | undefined>(() => readSessionValue(SESSION_SELECTED_BRANCH_KEY));
   const [diffTree, setDiffTree] = useState<DiffTreeNode[]>([]);
   const [selectedTreePath, setSelectedTreePath] = useState<string>();
-  const [selectedFilePath, setSelectedFilePath] = useState<string>();
+  const [selectedFilePath, setSelectedFilePath] = useState<string | undefined>(() => readSessionValue(SESSION_SELECTED_FILE_KEY));
   const [diffFile, setDiffFile] = useState<DiffFilePayload | null>(null);
   const [error, setError] = useState<string>();
   const [branchesLoading, setBranchesLoading] = useState(true);
@@ -100,7 +131,7 @@ export function App() {
         }
 
         setSummary(repoSummary);
-        setSelectedBranch(repoSummary.defaultSelectedBranch);
+        setSelectedBranch((current) => current ?? repoSummary.defaultSelectedBranch);
         setError(undefined);
       } catch (loadError) {
         if (!cancelled) {
@@ -151,7 +182,32 @@ export function App() {
   }, [summary?.branchPollIntervalMs, refreshNonce]);
 
   useEffect(() => {
-    if (!selectedBranch) {
+    if (branchesLoading || branches.length === 0) {
+      return;
+    }
+
+    if (selectedBranch && branches.some((branch) => branch.name === selectedBranch)) {
+      return;
+    }
+
+    const fallbackBranch =
+      branches.find((branch) => branch.name === summary?.defaultSelectedBranch)?.name ?? branches[0]?.name;
+
+    if (fallbackBranch && fallbackBranch !== selectedBranch) {
+      setSelectedBranch(fallbackBranch);
+    }
+  }, [branches, branchesLoading, selectedBranch, summary?.defaultSelectedBranch]);
+
+  useEffect(() => {
+    writeSessionValue(SESSION_SELECTED_BRANCH_KEY, selectedBranch);
+  }, [selectedBranch]);
+
+  useEffect(() => {
+    writeSessionValue(SESSION_SELECTED_FILE_KEY, selectedFilePath);
+  }, [selectedFilePath]);
+
+  useEffect(() => {
+    if (!selectedBranch || branchesLoading) {
       return;
     }
 

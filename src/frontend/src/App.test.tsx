@@ -71,6 +71,7 @@ describe("App", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    window.sessionStorage.clear();
     vi.resetAllMocks();
   });
 
@@ -467,5 +468,93 @@ describe("App", () => {
       expect(api.getDiffFile).toHaveBeenLastCalledWith("main", "src/a.ts");
     });
     await screen.findByText("old a refresh => new a refresh");
+  });
+
+  it("restores the selected branch and file from session storage", async () => {
+    window.sessionStorage.setItem("diff-worktree:selected-branch", "feature/test");
+    window.sessionStorage.setItem("diff-worktree:selected-file", "src/b.ts");
+
+    api.getBranches.mockResolvedValue([
+      {
+        name: "main",
+        isCurrent: true,
+        ahead: 0,
+        behind: 0,
+        syncStatus: "upToDate",
+        lastCommitOid: "abc",
+        lastCommitMessage: "msg",
+        lastCommitAuthorDate: "2026-03-20T00:00:00Z",
+      },
+      {
+        name: "feature/test",
+        isCurrent: false,
+        ahead: 0,
+        behind: 0,
+        syncStatus: "upToDate",
+        lastCommitOid: "def",
+        lastCommitMessage: "msg",
+        lastCommitAuthorDate: "2026-03-21T00:00:00Z",
+      },
+    ]);
+    api.getDiffTree.mockResolvedValue([
+      {
+        path: "src",
+        name: "src",
+        type: "directory",
+        children: [
+          { path: "src/a.ts", name: "a.ts", type: "file", changeType: "modified" },
+          { path: "src/b.ts", name: "b.ts", type: "file", changeType: "modified" },
+        ],
+      },
+    ]);
+    api.getDiffFile.mockResolvedValue({
+      path: "src/b.ts",
+      changeType: "modified",
+      language: "ts",
+      left: "old b",
+      right: "new b",
+      isBinary: false,
+      tooLarge: false,
+    });
+
+    render(<App />);
+
+    await screen.findByText("old b => new b");
+    expect(screen.getByRole("button", { name: "test up to date" })).toHaveClass("branch-item-selected");
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem("diff-worktree:selected-branch")).toBe("feature/test");
+      expect(window.sessionStorage.getItem("diff-worktree:selected-file")).toBe("src/b.ts");
+    });
+  });
+
+  it("falls back to a valid branch and clears a stale file selection from session storage", async () => {
+    window.sessionStorage.setItem("diff-worktree:selected-branch", "missing-branch");
+    window.sessionStorage.setItem("diff-worktree:selected-file", "src/missing.ts");
+
+    api.getDiffTree.mockResolvedValue([
+      {
+        path: "src",
+        name: "src",
+        type: "directory",
+        children: [{ path: "src/a.ts", name: "a.ts", type: "file", changeType: "modified" }],
+      },
+    ]);
+    api.getDiffFile.mockResolvedValue({
+      path: "src/a.ts",
+      changeType: "modified",
+      language: "ts",
+      left: "old a",
+      right: "new a",
+      isBinary: false,
+      tooLarge: false,
+    });
+
+    render(<App />);
+
+    await screen.findByText("old a => new a");
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem("diff-worktree:selected-branch")).toBe("main");
+      expect(window.sessionStorage.getItem("diff-worktree:selected-file")).toBe("src/a.ts");
+    });
   });
 });

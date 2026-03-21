@@ -121,6 +121,23 @@ describe("DiffViewerPane", () => {
     expect(screen.getByText("Local")).toBeInTheDocument();
   });
 
+  it("renders the richer empty state when no file is selected", () => {
+    render(
+      <DiffViewerPane
+        diffFile={null}
+        draftContent=""
+        loading={false}
+        onDraftChange={vi.fn()}
+        selectedBranch="main"
+      />,
+    );
+
+    expect(screen.getByText("Pick a file to start reviewing")).toBeInTheDocument();
+    expect(
+      screen.getByText("Choose a file from the change tree to inspect its remote and local versions side by side."),
+    ).toBeInTheDocument();
+  });
+
   it("keeps deleted files read-only on the local side", () => {
     render(
       <DiffViewerPane

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DiffEditor } from "@monaco-editor/react";
+import { FileSearch, FileX2, LoaderCircle, PackageX } from "lucide-react";
 
 import type { DiffFilePayload } from "../types";
 import { normalizeMonacoLanguage } from "./monacoLanguage";
@@ -19,8 +20,29 @@ interface LineChange {
   modifiedEndLineNumber: number;
 }
 
-function EmptyState({ message }: { message: string }) {
-  return <div className="empty-state empty-state-centered">{message}</div>;
+function EmptyState({
+  icon,
+  eyebrow,
+  title,
+  message,
+}: {
+  icon: React.ReactNode;
+  eyebrow: string;
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="empty-state-shell empty-state-shell-centered">
+      <div className="empty-state-card">
+        <div className="empty-state-badge" aria-hidden="true">
+          {icon}
+        </div>
+        <div className="empty-state-eyebrow">{eyebrow}</div>
+        <h3 className="empty-state-title">{title}</h3>
+        <p className="empty-state-description">{message}</p>
+      </div>
+    </div>
+  );
 }
 
 function applyLineChangeToDraft(originalText: string, draftText: string, lineChange: LineChange) {
@@ -76,10 +98,38 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
         <span>Local</span>
       </header>
       <div className="pane-body pane-body-diff">
-        {loading ? <EmptyState message="Loading diff..." /> : null}
-        {!loading && !diffFile ? <EmptyState message="Select a file to inspect the diff." /> : null}
-        {!loading && diffFile?.isBinary ? <EmptyState message="Binary files are not previewed in V1." /> : null}
-        {!loading && diffFile?.tooLarge ? <EmptyState message="This file is too large to render." /> : null}
+        {loading ? (
+          <EmptyState
+            eyebrow="Preparing view"
+            icon={<LoaderCircle size={16} />}
+            message="Loading the selected file diff and editor state."
+            title="Building diff preview"
+          />
+        ) : null}
+        {!loading && !diffFile ? (
+          <EmptyState
+            eyebrow="No file selected"
+            icon={<FileSearch size={16} />}
+            message="Choose a file from the change tree to inspect its remote and local versions side by side."
+            title="Pick a file to start reviewing"
+          />
+        ) : null}
+        {!loading && diffFile?.isBinary ? (
+          <EmptyState
+            eyebrow="Preview unavailable"
+            icon={<PackageX size={16} />}
+            message="Binary files are detected correctly, but inline preview is not supported in this version."
+            title="Binary diff cannot be rendered"
+          />
+        ) : null}
+        {!loading && diffFile?.tooLarge ? (
+          <EmptyState
+            eyebrow="Preview skipped"
+            icon={<FileX2 size={16} />}
+            message="This file exceeds the current rendering limit, so the editor preview has been intentionally disabled."
+            title="File is too large to display"
+          />
+        ) : null}
         {!loading && diffFile && !diffFile.isBinary && !diffFile.tooLarge ? (
           <>
             <div className="diff-meta">

@@ -13,6 +13,7 @@
     "build": "pnpm run build:server && pnpm run build:frontend && node scripts/copy-frontend-dist.mjs",
     "build:server": "tsup",
     "build:frontend": "pnpm --dir src/frontend run build",
+    "prepublishOnly": "npm run build",
     "test": "vitest run"
   },
   "packageManager": "pnpm@10.26.2",

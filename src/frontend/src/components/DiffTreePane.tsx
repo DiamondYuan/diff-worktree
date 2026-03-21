@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MutableRefObject } from "react";
-import { ChevronRight, File } from "lucide-react";
+import { ChevronRight, File, GitCompareArrows } from "lucide-react";
 
 import type { DiffTreeNode } from "../types";
 
@@ -25,6 +25,25 @@ interface ContextMenuState {
   x: number;
   y: number;
   filePath: string;
+}
+
+function TreeEmptyState({ branchName }: { branchName?: string }) {
+  return (
+    <div className="empty-state-shell">
+      <div className="empty-state-card empty-state-card-subtle">
+        <div className="empty-state-badge" aria-hidden="true">
+          <GitCompareArrows size={16} />
+        </div>
+        <div className="empty-state-eyebrow">Workspace synced</div>
+        <h3 className="empty-state-title">No file changes to review</h3>
+        <p className="empty-state-description">
+          {branchName
+            ? `The workspace currently matches ${branchName}. Switch branches or make edits to inspect a new diff.`
+            : "The workspace currently matches the selected baseline. Switch branches or make edits to inspect a new diff."}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function statusLabel(node: DiffTreeNode) {
@@ -236,9 +255,7 @@ export function DiffTreePane({
       </header>
       <div className="pane-body">
         {loading ? <div className="empty-state">Loading diff tree...</div> : null}
-        {!loading && nodes.length === 0 ? (
-          <div className="empty-state">No differences between the selected branch and the workspace.</div>
-        ) : null}
+        {!loading && nodes.length === 0 ? <TreeEmptyState branchName={selectedBranch} /> : null}
         {!loading && nodes.length > 0 ? (
           <div className="tree-list">
             {visibleNodes.map((item) => {
