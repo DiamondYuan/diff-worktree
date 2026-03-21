@@ -29,7 +29,7 @@ interface ContextMenuState {
 
 function TreeEmptyState({ branchName }: { branchName?: string }) {
   return (
-    <div className="empty-state-shell">
+    <div className="empty-state-shell empty-state-shell-centered">
       <div className="empty-state-card empty-state-card-subtle">
         <h3 className="empty-state-title">No file changes to review</h3>
         <p className="empty-state-description">
@@ -249,7 +249,7 @@ export function DiffTreePane({
       <header className="pane-header">
         <span className="pane-meta">{selectedBranch ? `${selectedBranch} vs workspace` : "no branch"}</span>
       </header>
-      <div className="pane-body">
+      <div className={`pane-body${!loading && nodes.length === 0 ? " pane-body-empty" : ""}`}>
         {loading ? <div className="empty-state">Loading diff tree...</div> : null}
         {!loading && nodes.length === 0 ? <TreeEmptyState branchName={selectedBranch} /> : null}
         {!loading && nodes.length > 0 ? (

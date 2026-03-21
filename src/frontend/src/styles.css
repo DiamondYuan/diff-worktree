@@ -60,7 +60,7 @@ body {
   letter-spacing: 0.04em;
   padding: 0px 12px;
   text-transform: uppercase;
-  min-height: 44px;
+  min-height: 40px;
 }
 
 .pane-body {
@@ -70,10 +70,15 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
+  flex: 1;
 }
 
 .pane-body::-webkit-scrollbar {
   display: none;
+}
+
+.pane-body-empty {
+  display: flex;
 }
 
 .pane-body-diff {
@@ -405,6 +410,7 @@ body {
 
 .empty-state-shell {
   display: flex;
+  width: 100%;
   padding: 18px;
 }
 
@@ -425,7 +431,8 @@ body {
 }
 
 .empty-state-card-subtle {
-  width: 100%;
+  width: min(520px, 100%);
+  text-align: left;
 }
 
 .empty-state-badge {
@@ -439,11 +446,6 @@ body {
   margin-bottom: 10px;
 }
 
-.empty-state-card-gentle .empty-state-badge {
-  color: #7a8ea3;
-  opacity: 0.62;
-}
-
 .empty-state-title {
   margin: 0;
   color: #2d3a46;
@@ -452,22 +454,12 @@ body {
   line-height: 1.2;
 }
 
-.empty-state-card-gentle .empty-state-title {
-  color: #425261;
-  font-size: 16px;
-  font-weight: 500;
-}
-
 .empty-state-description {
   max-width: 52ch;
   margin: 10px 0 0;
   color: #4f4f4f;
   font-size: 13px;
   line-height: 1.6;
-}
-
-.empty-state-card-gentle .empty-state-description {
-  color: #607080;
 }
 
 .empty-state-centered {
