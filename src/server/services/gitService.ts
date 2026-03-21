@@ -120,6 +120,15 @@ async function runGitBuffer(repoRoot: string, args: string[]) {
   return stdout;
 }
 
+async function gitPathExists(repoRoot: string, baseBranch: string, filePath: string) {
+  try {
+    await runGit(repoRoot, ["cat-file", "-e", `${baseBranch}:${filePath}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function useRemoteVersion(repoRoot: string, baseBranch: string, filePath: string): Promise<void> {
   const resolvedRoot = path.resolve(repoRoot);
   const resolvedPath = path.resolve(resolvedRoot, filePath);
@@ -127,6 +136,12 @@ export async function useRemoteVersion(repoRoot: string, baseBranch: string, fil
 
   if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
     throw new Error(`Path ${filePath} is outside the repository root.`);
+  }
+
+  if (!(await gitPathExists(repoRoot, baseBranch, filePath))) {
+    await fs.promises.rm(resolvedPath, { force: true });
+    await runGit(repoRoot, ["rm", "--cached", "--ignore-unmatch", "--quiet", "--", filePath]);
+    return;
   }
 
   const buffer = await runGitBuffer(repoRoot, ["show", `${baseBranch}:${filePath}`]);

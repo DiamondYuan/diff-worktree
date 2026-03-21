@@ -75,6 +75,55 @@ describe("App", () => {
     vi.resetAllMocks();
   });
 
+  it("loads the initial diff once branches finish loading for a restored branch selection", async () => {
+    const initialBranches = [
+      {
+        name: "main",
+        isCurrent: true,
+        ahead: 0,
+        behind: 0,
+        syncStatus: "upToDate" as const,
+        lastCommitOid: "abc",
+        lastCommitMessage: "msg",
+        lastCommitAuthorDate: "2026-03-20T00:00:00Z",
+      },
+    ];
+
+    api.getBranches.mockImplementationOnce(() => new Promise(() => undefined));
+    api.getBranches.mockResolvedValue(initialBranches);
+    api.getDiffTree.mockResolvedValue([
+      {
+        path: "111.md",
+        name: "111.md",
+        type: "file",
+        changeType: "added",
+      },
+    ]);
+    api.getDiffFile.mockResolvedValue({
+      path: "111.md",
+      changeType: "added",
+      language: "md",
+      left: "",
+      right: "hello\n",
+      isBinary: false,
+      tooLarge: false,
+    });
+
+    window.sessionStorage.setItem("diff-worktree:selected-branch", "main");
+    render(<App />);
+
+    await waitFor(() => {
+      expect(api.getBranches).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(api.getDiffTree).toHaveBeenCalledWith("main");
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("diff-editor")).toHaveTextContent("=> hello");
+    });
+  });
+
   it("keeps the selected file after a manual refresh when the file still exists", async () => {
     api.getDiffTree
       .mockResolvedValueOnce([

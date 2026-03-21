@@ -253,7 +253,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedBranch, refreshNonce, treeReloadNonce]);
+  }, [branchesLoading, selectedBranch, refreshNonce, treeReloadNonce]);
 
   useEffect(() => {
     if (!selectedBranch || !selectedFilePath) {

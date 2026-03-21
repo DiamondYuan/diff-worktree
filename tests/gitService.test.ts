@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getRepoSummary, listLocalBranches } from "../src/server/services/gitService";
+import { getRepoSummary, listLocalBranches, useRemoteVersion } from "../src/server/services/gitService";
 
 const createdDirs: string[] = [];
 
@@ -175,5 +175,18 @@ describe("getRepoSummary", () => {
       defaultSelectedBranch: "main",
       branchPollIntervalMs: 60000,
     });
+  });
+});
+
+describe("useRemoteVersion", () => {
+  it("removes an untracked file when it does not exist on the base branch", async () => {
+    const { repoRoot } = createTrackedRepo();
+    const addedFile = path.join(repoRoot, "111.md");
+    fs.writeFileSync(addedFile, "local draft\n");
+
+    await expect(useRemoteVersion(repoRoot, "main", "111.md")).resolves.toBeUndefined();
+
+    expect(fs.existsSync(addedFile)).toBe(false);
+    expect(runGit(repoRoot, ["status", "--short"])).toBe("");
   });
 });
