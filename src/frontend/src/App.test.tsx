@@ -484,15 +484,6 @@ describe("App", () => {
         tooLarge: false,
       })
       .mockResolvedValueOnce({
-        path: "src/b.ts",
-        changeType: "modified",
-        language: "ts",
-        left: "old b",
-        right: "new b!",
-        isBinary: false,
-        tooLarge: false,
-      })
-      .mockResolvedValueOnce({
         path: "src/a.ts",
         changeType: "modified",
         language: "ts",

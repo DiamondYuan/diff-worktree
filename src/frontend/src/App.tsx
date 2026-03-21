@@ -330,7 +330,6 @@ export function App() {
 
           setPersistedContent(activeDraftContent);
           setError(undefined);
-          setDiffReloadNonce((current) => current + 1);
           setTreeReloadNonce((current) => current + 1);
         } catch (saveError) {
           if (
