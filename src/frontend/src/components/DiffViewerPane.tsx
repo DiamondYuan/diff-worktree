@@ -94,6 +94,16 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
             </div>
             <div className="diff-editor-shell" data-testid="diff-editor-shell">
               <DiffEditor
+                beforeMount={(monaco) => {
+                  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+                    noSemanticValidation: true,
+                    noSyntaxValidation: true,
+                  });
+                  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+                    noSemanticValidation: true,
+                    noSyntaxValidation: true,
+                  });
+                }}
                 height="100%"
                 language={editorLanguage}
                 modified={draftContent}

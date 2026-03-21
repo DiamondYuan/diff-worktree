@@ -1,6 +1,5 @@
 import express from "express";
 import type { Express } from "express";
-import path from "node:path";
 
 import { registerBranchesRoute } from "./routes/branches";
 import { registerDiffFileRoute } from "./routes/diffFile";
@@ -48,7 +47,7 @@ export function createServer(context: ServerContext): Express {
         return;
       }
 
-      res.sendFile(path.join(frontendDistPath, "index.html"));
+      res.sendFile("index.html", { root: frontendDistPath });
     });
   }
 
