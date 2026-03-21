@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MutableRefObject } from "react";
-import { ChevronRight, File, GitCompareArrows } from "lucide-react";
+import { ChevronRight, File } from "lucide-react";
 
 import type { DiffTreeNode } from "../types";
 
@@ -31,10 +31,6 @@ function TreeEmptyState({ branchName }: { branchName?: string }) {
   return (
     <div className="empty-state-shell">
       <div className="empty-state-card empty-state-card-subtle">
-        <div className="empty-state-badge" aria-hidden="true">
-          <GitCompareArrows size={16} />
-        </div>
-        <div className="empty-state-eyebrow">Workspace synced</div>
         <h3 className="empty-state-title">No file changes to review</h3>
         <p className="empty-state-description">
           {branchName

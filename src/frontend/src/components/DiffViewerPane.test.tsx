@@ -132,9 +132,9 @@ describe("DiffViewerPane", () => {
       />,
     );
 
-    expect(screen.getByText("Pick a file to start reviewing")).toBeInTheDocument();
+    expect(screen.getByText("Diff preview is waiting for a selection")).toBeInTheDocument();
     expect(
-      screen.getByText("Choose a file from the change tree to inspect its remote and local versions side by side."),
+      screen.getByText("Select any changed file from the left panel and the side-by-side diff will appear here."),
     ).toBeInTheDocument();
   });
 

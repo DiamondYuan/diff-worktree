@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DiffEditor } from "@monaco-editor/react";
-import { FileSearch, FileX2, LoaderCircle, PackageX } from "lucide-react";
+import { FileX2, LoaderCircle, PackageX } from "lucide-react";
 
 import type { DiffFilePayload } from "../types";
 import { normalizeMonacoLanguage } from "./monacoLanguage";
@@ -22,22 +22,23 @@ interface LineChange {
 
 function EmptyState({
   icon,
-  eyebrow,
   title,
   message,
+  tone = "default",
 }: {
-  icon: React.ReactNode;
-  eyebrow: string;
+  icon?: React.ReactNode;
   title: string;
   message: string;
+  tone?: "default" | "gentle";
 }) {
   return (
     <div className="empty-state-shell empty-state-shell-centered">
-      <div className="empty-state-card">
-        <div className="empty-state-badge" aria-hidden="true">
-          {icon}
-        </div>
-        <div className="empty-state-eyebrow">{eyebrow}</div>
+      <div className={`empty-state-card${tone === "gentle" ? " empty-state-card-gentle" : ""}`}>
+        {icon ? (
+          <div className="empty-state-badge" aria-hidden="true">
+            {icon}
+          </div>
+        ) : null}
         <h3 className="empty-state-title">{title}</h3>
         <p className="empty-state-description">{message}</p>
       </div>
@@ -100,7 +101,6 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
       <div className="pane-body pane-body-diff">
         {loading ? (
           <EmptyState
-            eyebrow="Preparing view"
             icon={<LoaderCircle size={16} />}
             message="Loading the selected file diff and editor state."
             title="Building diff preview"
@@ -108,15 +108,13 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
         ) : null}
         {!loading && !diffFile ? (
           <EmptyState
-            eyebrow="No file selected"
-            icon={<FileSearch size={16} />}
-            message="Choose a file from the change tree to inspect its remote and local versions side by side."
-            title="Pick a file to start reviewing"
+            message="Select any changed file from the left panel and the side-by-side diff will appear here."
+            title="Diff preview is waiting for a selection"
+            tone="gentle"
           />
         ) : null}
         {!loading && diffFile?.isBinary ? (
           <EmptyState
-            eyebrow="Preview unavailable"
             icon={<PackageX size={16} />}
             message="Binary files are detected correctly, but inline preview is not supported in this version."
             title="Binary diff cannot be rendered"
@@ -124,7 +122,6 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
         ) : null}
         {!loading && diffFile?.tooLarge ? (
           <EmptyState
-            eyebrow="Preview skipped"
             icon={<FileX2 size={16} />}
             message="This file exceeds the current rendering limit, so the editor preview has been intentionally disabled."
             title="File is too large to display"
