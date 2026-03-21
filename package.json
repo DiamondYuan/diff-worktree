@@ -1,13 +1,15 @@
 {
   "name": "diff-worktree",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "CLI-launched local Git inspector",
   "type": "module",
   "main": "dist/main.js",
   "bin": {
     "diff-worktree": "dist/main.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsx src/cli/main.ts",
     "build": "pnpm run build:server && pnpm run build:frontend && node scripts/copy-frontend-dist.mjs",
