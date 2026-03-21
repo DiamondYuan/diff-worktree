@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { DiffEditor } from "@monaco-editor/react";
 import { FileX2, LoaderCircle, PackageX } from "lucide-react";
 
@@ -11,13 +11,6 @@ interface DiffViewerPaneProps {
   loading: boolean;
   onDraftChange: (next: string) => void;
   selectedBranch?: string;
-}
-
-interface LineChange {
-  originalStartLineNumber: number;
-  originalEndLineNumber: number;
-  modifiedStartLineNumber: number;
-  modifiedEndLineNumber: number;
 }
 
 function EmptyState({
@@ -46,35 +39,10 @@ function EmptyState({
   );
 }
 
-function applyLineChangeToDraft(originalText: string, draftText: string, lineChange: LineChange) {
-  const originalLines = originalText.split("\n");
-  const draftLines = draftText.split("\n");
-  const originalStart = Math.max(lineChange.originalStartLineNumber - 1, 0);
-  const originalEnd = Math.max(lineChange.originalEndLineNumber, originalStart);
-  const modifiedStart = Math.max(lineChange.modifiedStartLineNumber - 1, 0);
-  const modifiedEnd = Math.max(lineChange.modifiedEndLineNumber, modifiedStart);
-  const replacement = originalLines.slice(originalStart, originalEnd);
-
-  return [...draftLines.slice(0, modifiedStart), ...replacement, ...draftLines.slice(modifiedEnd)].join("\n");
-}
-
 export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange, selectedBranch }: DiffViewerPaneProps) {
   const editorLanguage = normalizeMonacoLanguage(diffFile?.language);
   const disposeRef = useRef<{ dispose: () => void } | null>(null);
-  const editorRef = useRef<{
-    getLineChanges: () => LineChange[] | null;
-    getModifiedEditor: () => {
-      getValue: () => string;
-      onDidChangeModelContent: (listener: () => void) => { dispose: () => void };
-    };
-  } | null>(null);
-  const [lineChanges, setLineChanges] = useState<LineChange[]>([]);
   const isReadOnly = diffFile?.changeType === "deleted";
-  const canAcceptChunks = diffFile?.changeType === "modified" || diffFile?.changeType === "renamed";
-
-  function syncLineChanges() {
-    setLineChanges(editorRef.current?.getLineChanges() ?? []);
-  }
 
   useEffect(() => {
     return () => {
@@ -82,15 +50,6 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
       disposeRef.current = null;
     };
   }, []);
-
-  useEffect(() => {
-    if (!canAcceptChunks || !diffFile) {
-      setLineChanges([]);
-      return;
-    }
-
-    syncLineChanges();
-  }, [canAcceptChunks, diffFile, draftContent]);
 
   return (
     <section className="pane pane-wide">
@@ -134,21 +93,6 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
               <div className={`pill pill-${diffFile.changeType}`}>{diffFile.changeType}</div>
             </div>
             <div className="diff-editor-shell" data-testid="diff-editor-shell">
-              {canAcceptChunks && lineChanges.length > 0 ? (
-                <div className="diff-apply-actions">
-                  {lineChanges.map((lineChange, index) => (
-                    <button
-                      key={`${lineChange.originalStartLineNumber}-${lineChange.modifiedStartLineNumber}-${index}`}
-                      onClick={() => {
-                        onDraftChange(applyLineChangeToDraft(diffFile.left, draftContent, lineChange));
-                      }}
-                      type="button"
-                    >
-                      接受
-                    </button>
-                  ))}
-                </div>
-              ) : null}
               <DiffEditor
                 height="100%"
                 language={editorLanguage}
@@ -161,17 +105,14 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
                   scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
                 }}
                 onMount={(editor) => {
-                  editorRef.current = editor;
                   disposeRef.current?.dispose();
                   disposeRef.current = editor.getModifiedEditor().onDidChangeModelContent(() => {
                     if (isReadOnly) {
                       return;
                     }
 
-                    syncLineChanges();
                     onDraftChange(editor.getModifiedEditor().getValue());
                   });
-                  syncLineChanges();
                 }}
                 original={diffFile.left}
                 theme="vs"
