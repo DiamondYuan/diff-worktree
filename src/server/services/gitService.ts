@@ -120,15 +120,6 @@ async function runGitBuffer(repoRoot: string, args: string[]) {
   return stdout;
 }
 
-async function gitPathExists(repoRoot: string, baseBranch: string, filePath: string) {
-  try {
-    await runGit(repoRoot, ["cat-file", "-e", `${baseBranch}:${filePath}`]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function useRemoteVersion(repoRoot: string, baseBranch: string, filePath: string): Promise<void> {
   const resolvedRoot = path.resolve(repoRoot);
   const resolvedPath = path.resolve(resolvedRoot, filePath);
@@ -138,13 +129,15 @@ export async function useRemoteVersion(repoRoot: string, baseBranch: string, fil
     throw new Error(`Path ${filePath} is outside the repository root.`);
   }
 
-  if (!(await gitPathExists(repoRoot, baseBranch, filePath))) {
+  let buffer: Buffer;
+
+  try {
+    buffer = await runGitBuffer(repoRoot, ["show", `${baseBranch}:${filePath}`]);
+  } catch {
     await fs.promises.rm(resolvedPath, { force: true });
     await runGit(repoRoot, ["rm", "--cached", "--ignore-unmatch", "--quiet", "--", filePath]);
     return;
   }
-
-  const buffer = await runGitBuffer(repoRoot, ["show", `${baseBranch}:${filePath}`]);
   await fs.promises.mkdir(path.dirname(resolvedPath), { recursive: true });
   await fs.promises.writeFile(resolvedPath, buffer);
   await runGit(repoRoot, ["add", filePath]);
