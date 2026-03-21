@@ -330,7 +330,6 @@ export function App() {
 
           setPersistedContent(activeDraftContent);
           setError(undefined);
-          setTreeReloadNonce((current) => current + 1);
         } catch (saveError) {
           if (
             selectedBranchRef.current !== activeBranch ||
