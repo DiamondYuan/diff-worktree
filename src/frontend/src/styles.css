@@ -163,6 +163,28 @@ body {
   width: 100%;
 }
 
+.branch-section {
+  display: grid;
+  gap: 4px;
+}
+
+.branch-section-title {
+  color: #616161;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 8px 12px 2px;
+  text-transform: uppercase;
+}
+
+.branch-row {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid transparent;
+}
+
 .branch-item,
 .tree-entry {
   width: 100%;
@@ -178,12 +200,25 @@ body {
   padding: 4px 12px;
 }
 
+.branch-item-static {
+  cursor: default;
+}
+
 .branch-item-selected,
 .tree-entry-selected,
 .tree-row-selected {
   border-color: #c7e0f4;
   background: #cce8ff;
   outline: none;
+}
+
+.branch-row-selected {
+  border-color: #c7e0f4;
+  background: #cce8ff;
+}
+
+.branch-row-selected .branch-item {
+  background: transparent;
 }
 
 .branch-item-title {
@@ -206,10 +241,37 @@ body {
   padding-left: 28px;
 }
 
+.branch-item-actions {
+  display: inline-flex;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.branch-action-button {
+  min-width: 0;
+  flex-shrink: 0;
+  color: #616161;
+}
+
+.branch-action-button:hover:not(:disabled),
+.branch-action-button:focus-visible {
+  color: #1f1f1f;
+}
+
+.branch-action-button:disabled {
+  opacity: 0.45;
+}
+
 .branch-item-meta {
   margin-top: 2px;
   color: #616161;
   font-size: 11px;
+}
+
+.branch-item-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .branch-group-header {

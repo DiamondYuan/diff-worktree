@@ -5,7 +5,14 @@ import { execFileSync } from "node:child_process";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getRepoSummary, listLocalBranches, useRemoteVersion } from "../src/server/services/gitService";
+import {
+  deleteLocalBranch,
+  deleteRemoteBranch,
+  getRepoSummary,
+  listBranches,
+  updateLocalBranch,
+  useRemoteVersion,
+} from "../src/server/services/gitService";
 
 const createdDirs: string[] = [];
 
@@ -68,15 +75,26 @@ describe("listLocalBranches", () => {
   it("reports an up-to-date tracked branch", async () => {
     const { repoRoot } = createTrackedRepo();
 
-    const branches = await listLocalBranches(repoRoot);
-    expect(branches).toHaveLength(1);
-    expect(branches[0]).toMatchObject({
+    const { localBranches, remoteBranches } = await listBranches(repoRoot);
+    expect(localBranches).toHaveLength(1);
+    expect(localBranches[0]).toMatchObject({
       name: "main",
+      scope: "local",
       isCurrent: true,
       ahead: 0,
       behind: 0,
       syncStatus: "upToDate",
       upstreamName: "origin/main",
+      canDelete: false,
+      canUpdate: false,
+    });
+    expect(remoteBranches).toHaveLength(1);
+    expect(remoteBranches[0]).toMatchObject({
+      name: "origin/main",
+      scope: "remote",
+      displayName: "main",
+      canDelete: false,
+      disabledReason: "Protected remote branch.",
     });
   });
 
@@ -84,11 +102,12 @@ describe("listLocalBranches", () => {
     const { repoRoot } = createTrackedRepo();
     commitFile(repoRoot, "ahead.txt", "ahead\n", "feat: local change");
 
-    const mainBranch = (await listLocalBranches(repoRoot)).find((branch) => branch.name === "main");
+    const mainBranch = (await listBranches(repoRoot)).localBranches.find((branch) => branch.name === "main");
     expect(mainBranch).toMatchObject({
       ahead: 1,
       behind: 0,
       syncStatus: "ahead",
+      canUpdate: false,
     });
   });
 
@@ -100,11 +119,12 @@ describe("listLocalBranches", () => {
     runGit(peerRoot, ["push", "origin", "main"]);
     runGit(repoRoot, ["fetch", "origin"]);
 
-    const mainBranch = (await listLocalBranches(repoRoot)).find((branch) => branch.name === "main");
+    const mainBranch = (await listBranches(repoRoot)).localBranches.find((branch) => branch.name === "main");
     expect(mainBranch).toMatchObject({
       ahead: 0,
       behind: 1,
       syncStatus: "behind",
+      canUpdate: true,
     });
   });
 
@@ -117,11 +137,12 @@ describe("listLocalBranches", () => {
     runGit(peerRoot, ["push", "origin", "main"]);
     runGit(repoRoot, ["fetch", "origin"]);
 
-    const mainBranch = (await listLocalBranches(repoRoot)).find((branch) => branch.name === "main");
+    const mainBranch = (await listBranches(repoRoot)).localBranches.find((branch) => branch.name === "main");
     expect(mainBranch).toMatchObject({
       ahead: 1,
       behind: 1,
       syncStatus: "diverged",
+      canUpdate: false,
     });
   });
 
@@ -129,17 +150,19 @@ describe("listLocalBranches", () => {
     const { repoRoot } = createTrackedRepo();
     runGit(repoRoot, ["checkout", "-b", "feature/no-upstream"]);
 
-    const featureBranch = (await listLocalBranches(repoRoot)).find(
+    const featureBranch = (await listBranches(repoRoot)).localBranches.find(
       (branch) => branch.name === "feature/no-upstream",
     );
 
     expect(featureBranch).toMatchObject({
       name: "feature/no-upstream",
+      scope: "local",
       isCurrent: true,
       ahead: 0,
       behind: 0,
       syncStatus: "noUpstream",
       upstreamName: undefined,
+      canUpdate: false,
     });
   });
 
@@ -150,7 +173,7 @@ describe("listLocalBranches", () => {
     runGit(repoRoot, ["config", "branch.feature/stale-upstream.merge", "refs/heads/feature/stale-upstream"]);
     runGit(repoRoot, ["update-ref", "-d", "refs/remotes/origin/feature/stale-upstream"]);
 
-    const featureBranch = (await listLocalBranches(repoRoot)).find(
+    const featureBranch = (await listBranches(repoRoot)).localBranches.find(
       (branch) => branch.name === "feature/stale-upstream",
     );
 
@@ -162,6 +185,97 @@ describe("listLocalBranches", () => {
       syncStatus: "noUpstream",
       upstreamName: undefined,
     });
+  });
+
+  it("excludes symbolic remote refs from the remote branch list", async () => {
+    const { repoRoot } = createTrackedRepo();
+
+    const { remoteBranches } = await listBranches(repoRoot);
+
+    expect(remoteBranches.some((branch) => branch.name.endsWith("/HEAD"))).toBe(false);
+  });
+});
+
+describe("deleteLocalBranch", () => {
+  it("deletes a merged local branch safely", async () => {
+    const { repoRoot } = createTrackedRepo();
+    runGit(repoRoot, ["checkout", "-b", "feature/merged"]);
+    runGit(repoRoot, ["checkout", "main"]);
+
+    await expect(deleteLocalBranch(repoRoot, "feature/merged")).resolves.toBeUndefined();
+    expect(runGit(repoRoot, ["branch", "--list", "feature/merged"])).toBe("");
+  });
+
+  it("rejects deleting the current branch", async () => {
+    const { repoRoot } = createTrackedRepo();
+
+    await expect(deleteLocalBranch(repoRoot, "main")).rejects.toThrow(/current branch/i);
+  });
+
+  it("surfaces git safety errors for unmerged branches", async () => {
+    const { repoRoot } = createTrackedRepo();
+    runGit(repoRoot, ["checkout", "-b", "feature/unmerged"]);
+    commitFile(repoRoot, "unmerged.txt", "work\n", "feat: unmerged");
+    runGit(repoRoot, ["checkout", "main"]);
+
+    await expect(deleteLocalBranch(repoRoot, "feature/unmerged")).rejects.toThrow(/not fully merged|unmerged/i);
+  });
+});
+
+describe("deleteRemoteBranch", () => {
+  it("rejects deleting the protected origin/main branch", async () => {
+    const { repoRoot } = createTrackedRepo();
+
+    await expect(deleteRemoteBranch(repoRoot, "origin", "main")).rejects.toThrow(/protected remote branch/i);
+  });
+
+  it("deletes a remote branch and prunes the local tracking ref", async () => {
+    const { remoteRoot, repoRoot } = createTrackedRepo();
+    const peerRoot = makeTempDir("diff-worktree-peer-");
+    cloneRemote(remoteRoot, peerRoot);
+    runGit(peerRoot, ["checkout", "-b", "feature/remote-delete"]);
+    commitFile(peerRoot, "remote-delete.txt", "bye\n", "feat: remote delete");
+    runGit(peerRoot, ["push", "-u", "origin", "feature/remote-delete"]);
+    runGit(repoRoot, ["fetch", "origin"]);
+
+    await expect(deleteRemoteBranch(repoRoot, "origin", "feature/remote-delete")).resolves.toBeUndefined();
+
+    expect(runGit(repoRoot, ["branch", "-r", "--list", "origin/feature/remote-delete"])).toBe("");
+    expect(runGit(remoteRoot, ["for-each-ref", "--format=%(refname:short)", "refs/heads/feature/remote-delete"])).toBe(
+      "",
+    );
+  });
+});
+
+describe("updateLocalBranch", () => {
+  it("fast-forwards a behind current branch from its upstream", async () => {
+    const { remoteRoot, repoRoot } = createTrackedRepo();
+    const peerRoot = makeTempDir("diff-worktree-peer-");
+    cloneRemote(remoteRoot, peerRoot);
+    commitFile(peerRoot, "behind.txt", "behind\n", "feat: remote change");
+    runGit(peerRoot, ["push", "origin", "main"]);
+
+    await expect(updateLocalBranch(repoRoot, "main")).resolves.toBeUndefined();
+
+    const mainBranch = (await listBranches(repoRoot)).localBranches.find((branch) => branch.name === "main");
+    expect(mainBranch).toMatchObject({
+      ahead: 0,
+      behind: 0,
+      syncStatus: "upToDate",
+    });
+    expect(fs.readFileSync(path.join(repoRoot, "behind.txt"), "utf8")).toBe("behind\n");
+  });
+
+  it("rejects updating a diverged branch", async () => {
+    const { remoteRoot, repoRoot } = createTrackedRepo();
+    const peerRoot = makeTempDir("diff-worktree-peer-");
+    cloneRemote(remoteRoot, peerRoot);
+    commitFile(repoRoot, "local.txt", "local\n", "feat: local change");
+    commitFile(peerRoot, "remote.txt", "remote\n", "feat: remote change");
+    runGit(peerRoot, ["push", "origin", "main"]);
+    runGit(repoRoot, ["fetch", "origin"]);
+
+    await expect(updateLocalBranch(repoRoot, "main")).rejects.toThrow(/manual|rebase|merge/i);
   });
 });
 

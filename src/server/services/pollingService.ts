@@ -1,10 +1,10 @@
-import type { BranchStatus } from "../../shared/types";
-import { BRANCH_POLL_INTERVAL_MS, listLocalBranches } from "./gitService";
+import type { BranchLists } from "../../shared/types";
+import { BRANCH_POLL_INTERVAL_MS, listBranches } from "./gitService";
 
 export class BranchPollingService {
-  private cache: BranchStatus[] | null = null;
+  private cache: BranchLists | null = null;
 
-  private refreshPromise: Promise<BranchStatus[]> | null = null;
+  private refreshPromise: Promise<BranchLists> | null = null;
 
   constructor(
     private readonly repoRoot: string,
@@ -29,12 +29,19 @@ export class BranchPollingService {
     return this.refresh();
   }
 
-  async refresh() {
+  async refresh(options?: { syncRemotes?: boolean }) {
     if (!this.refreshPromise) {
-      this.refreshPromise = listLocalBranches(this.repoRoot)
-        .then((branches) => {
-          this.cache = branches;
-          return branches;
+      this.refreshPromise = (async () => {
+        if (options?.syncRemotes) {
+          const { fetchRemotes } = await import("./gitService");
+          await fetchRemotes(this.repoRoot);
+        }
+
+        return listBranches(this.repoRoot);
+      })()
+        .then((branchLists) => {
+          this.cache = branchLists;
+          return branchLists;
         })
         .finally(() => {
           this.refreshPromise = null;

@@ -1,4 +1,4 @@
-import type { BranchStatus, DiffFilePayload, DiffTreeNode, RepoSummary } from "../types";
+import type { BranchLists, DiffFilePayload, DiffTreeNode, RepoSummary } from "../types";
 
 async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
@@ -15,8 +15,7 @@ export function getRepoSummary() {
 }
 
 export async function getBranches() {
-  const payload = await requestJson<{ branches: BranchStatus[] }>("/api/branches");
-  return payload.branches;
+  return requestJson<BranchLists>("/api/branches");
 }
 
 export async function getDiffTree(baseBranch: string) {
@@ -49,7 +48,31 @@ export function useRemoteVersion(baseBranch: string, filePath: string) {
 }
 
 export function refreshRepo() {
-  return requestJson<{ branches: BranchStatus[] }>("/api/refresh", {
+  return requestJson<BranchLists>("/api/refresh", {
     method: "POST",
+  });
+}
+
+export function updateLocalBranch(branchName: string) {
+  return requestJson<BranchLists>("/api/branches/local/update", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ branchName }),
+  });
+}
+
+export function deleteLocalBranch(branchName: string) {
+  return requestJson<BranchLists>("/api/branches/local/delete", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ branchName }),
+  });
+}
+
+export function deleteRemoteBranch(remoteName: string, branchName: string) {
+  return requestJson<BranchLists>("/api/branches/remote/delete", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ remoteName, branchName }),
   });
 }

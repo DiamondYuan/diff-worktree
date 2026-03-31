@@ -1,6 +1,7 @@
 import express from "express";
 import type { Express } from "express";
 
+import { registerBranchActionsRoute } from "./routes/branchActions";
 import { registerBranchesRoute } from "./routes/branches";
 import { registerDiffFileRoute } from "./routes/diffFile";
 import { registerDiffTreeRoute } from "./routes/diffTree";
@@ -33,6 +34,7 @@ export function createServer(context: ServerContext): Express {
 
   registerRepoSummaryRoute(app, context.repoRoot);
   registerBranchesRoute(app, branchPollingService);
+  registerBranchActionsRoute(app, context.repoRoot, branchPollingService);
   registerDiffTreeRoute(app, context.repoRoot);
   registerDiffFileRoute(app, context.repoRoot);
   registerWorkspaceFileRoute(app, context.repoRoot);

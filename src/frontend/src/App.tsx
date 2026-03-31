@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
-import { getBranches, getDiffFile, getDiffTree, getRepoSummary, refreshRepo, saveWorkspaceFile, useRemoteVersion } from "./api/client";
+import {
+  deleteLocalBranch,
+  deleteRemoteBranch,
+  getBranches,
+  getDiffFile,
+  getDiffTree,
+  getRepoSummary,
+  refreshRepo,
+  saveWorkspaceFile,
+  updateLocalBranch,
+  useRemoteVersion,
+} from "./api/client";
 import { BranchPane } from "./components/BranchPane";
 import { DiffTreePane } from "./components/DiffTreePane";
 import { DiffViewerPane } from "./components/DiffViewerPane";
-import type { BranchStatus, DiffFilePayload, DiffTreeNode, RepoSummary } from "./types";
+import type { BranchLists, BranchStatus, DiffFilePayload, DiffTreeNode, RepoSummary } from "./types";
 
 const SESSION_SELECTED_BRANCH_KEY = "diff-worktree:selected-branch";
 const SESSION_SELECTED_FILE_KEY = "diff-worktree:selected-file";
@@ -90,7 +101,8 @@ function hasNode(nodes: DiffTreeNode[], targetPath: string | undefined): boolean
 
 export function App() {
   const [summary, setSummary] = useState<RepoSummary | null>(null);
-  const [branches, setBranches] = useState<BranchStatus[]>([]);
+  const [localBranches, setLocalBranches] = useState<BranchStatus[]>([]);
+  const [remoteBranches, setRemoteBranches] = useState<BranchStatus[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(() => readSessionValue(SESSION_SELECTED_BRANCH_KEY));
   const [diffTree, setDiffTree] = useState<DiffTreeNode[]>([]);
   const [selectedTreePath, setSelectedTreePath] = useState<string>();
@@ -119,6 +131,11 @@ export function App() {
   draftContentRef.current = draftContent;
   persistedContentRef.current = persistedContent;
   draftVersionRef.current = draftVersion;
+
+  function applyBranchLists(branchLists: BranchLists) {
+    setLocalBranches(branchLists.localBranches);
+    setRemoteBranches(branchLists.remoteBranches);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -154,9 +171,9 @@ export function App() {
       setBranchesLoading(true);
 
       try {
-        const nextBranches = await getBranches();
+        const branchLists = await getBranches();
         if (!cancelled) {
-          setBranches(nextBranches);
+          applyBranchLists(branchLists);
           setError(undefined);
         }
       } catch (loadError) {
@@ -182,21 +199,21 @@ export function App() {
   }, [summary?.branchPollIntervalMs, refreshNonce]);
 
   useEffect(() => {
-    if (branchesLoading || branches.length === 0) {
+    if (branchesLoading || localBranches.length === 0) {
       return;
     }
 
-    if (selectedBranch && branches.some((branch) => branch.name === selectedBranch)) {
+    if (selectedBranch && localBranches.some((branch) => branch.name === selectedBranch)) {
       return;
     }
 
     const fallbackBranch =
-      branches.find((branch) => branch.name === summary?.defaultSelectedBranch)?.name ?? branches[0]?.name;
+      localBranches.find((branch) => branch.name === summary?.defaultSelectedBranch)?.name ?? localBranches[0]?.name;
 
     if (fallbackBranch && fallbackBranch !== selectedBranch) {
       setSelectedBranch(fallbackBranch);
     }
-  }, [branches, branchesLoading, selectedBranch, summary?.defaultSelectedBranch]);
+  }, [localBranches, branchesLoading, selectedBranch, summary?.defaultSelectedBranch]);
 
   useEffect(() => {
     writeSessionValue(SESSION_SELECTED_BRANCH_KEY, selectedBranch);
@@ -353,7 +370,7 @@ export function App() {
     setRefreshing(true);
 
     try {
-      await refreshRepo();
+      applyBranchLists(await refreshRepo());
       setRefreshNonce((current) => current + 1);
       setError(undefined);
     } catch (refreshError) {
@@ -378,6 +395,43 @@ export function App() {
     }
   }
 
+  async function handleUpdateLocalBranch(branchName: string) {
+    try {
+      applyBranchLists(await updateLocalBranch(branchName));
+      setTreeReloadNonce((current) => current + 1);
+      setDiffReloadNonce((current) => current + 1);
+      setError(undefined);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update branch.");
+    }
+  }
+
+  async function handleDeleteLocalBranch(branchName: string) {
+    if (!window.confirm(`Delete local branch ${branchName}?`)) {
+      return;
+    }
+
+    try {
+      applyBranchLists(await deleteLocalBranch(branchName));
+      setError(undefined);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete local branch.");
+    }
+  }
+
+  async function handleDeleteRemoteBranch(remoteName: string, branchName: string, fullName: string) {
+    if (!window.confirm(`Delete remote branch ${fullName}?`)) {
+      return;
+    }
+
+    try {
+      applyBranchLists(await deleteRemoteBranch(remoteName, branchName));
+      setError(undefined);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete remote branch.");
+    }
+  }
+
   function handleSelectTreeItem(node: DiffTreeNode) {
     setSelectedTreePath(node.path);
 
@@ -394,11 +448,15 @@ export function App() {
   return (
     <main className="app-shell">
       <BranchPane
-        branches={branches}
+        localBranches={localBranches}
+        remoteBranches={remoteBranches}
         homeDir={summary?.homeDir}
         loading={branchesLoading}
+        onDeleteLocalBranch={handleDeleteLocalBranch}
+        onDeleteRemoteBranch={handleDeleteRemoteBranch}
         onRefresh={handleRefresh}
         onSelectBranch={setSelectedBranch}
+        onUpdateLocalBranch={handleUpdateLocalBranch}
         refreshing={refreshing}
         repoRoot={summary?.repoRoot}
         selectedBranch={selectedBranch}

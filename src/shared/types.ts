@@ -5,6 +5,8 @@ export type SyncStatus =
   | "diverged"
   | "noUpstream";
 
+export type BranchScope = "local" | "remote";
+
 export interface RepoSummary {
   repoRoot: string;
   homeDir: string;
@@ -14,7 +16,11 @@ export interface RepoSummary {
 }
 
 export interface BranchStatus {
+  scope: BranchScope;
   name: string;
+  displayName?: string;
+  remoteName?: string;
+  shortName?: string;
   isCurrent: boolean;
   upstreamName?: string;
   ahead: number;
@@ -23,6 +29,14 @@ export interface BranchStatus {
   lastCommitOid: string;
   lastCommitMessage: string;
   lastCommitAuthorDate: string;
+  canDelete?: boolean;
+  canUpdate?: boolean;
+  disabledReason?: string;
+}
+
+export interface BranchLists {
+  localBranches: BranchStatus[];
+  remoteBranches: BranchStatus[];
 }
 
 export type ChangeType = "added" | "modified" | "deleted" | "renamed";
