@@ -112,6 +112,12 @@ export function DiffViewerPane({ diffFile, draftContent, loading, onDraftChange,
                   fontSize: 13,
                   minimap: { enabled: false },
                   readOnly: isReadOnly,
+                  hideUnchangedRegions: {
+                    enabled: true,
+                    contextLineCount: 3,
+                    minimumLineCount: 3,
+                    revealLineCount: 20,
+                  },
                   scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
                 }}
                 onMount={(editor) => {
