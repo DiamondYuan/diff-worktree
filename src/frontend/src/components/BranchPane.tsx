@@ -6,7 +6,6 @@ import { formatDisplayPath } from "../utils/displayPath";
 
 interface BranchPaneProps {
   localBranches: BranchStatus[];
-  remoteBranches: BranchStatus[];
   homeDir?: string;
   loading: boolean;
   refreshing: boolean;
@@ -16,7 +15,6 @@ interface BranchPaneProps {
   onRefresh: () => void;
   onUpdateLocalBranch: (branchName: string) => void;
   onDeleteLocalBranch: (branchName: string) => void;
-  onDeleteRemoteBranch: (remoteName: string, branchName: string, fullName: string) => void;
 }
 
 interface BranchGroup {
@@ -81,14 +79,6 @@ function shouldShowLocalUpdateAction(branch: BranchStatus) {
   return Boolean(branch.canUpdate || branch.disabledReason);
 }
 
-function isProtectedRemoteMain(branch: BranchStatus) {
-  return branch.scope === "remote" && branch.remoteName === "origin" && branch.shortName === "main";
-}
-
-function shouldShowRemoteDeleteAction(branch: BranchStatus) {
-  return !isProtectedRemoteMain(branch);
-}
-
 function LocalBranchItem({
   branch,
   selected,
@@ -146,42 +136,8 @@ function LocalBranchItem({
   );
 }
 
-function RemoteBranchItem({
-  branch,
-  onDelete,
-}: {
-  branch: BranchStatus;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="branch-row">
-      <div className="branch-item branch-item-static" title={branch.name}>
-        <div className="branch-item-title">
-          <span className="branch-item-name">{branch.displayName ?? branch.shortName ?? branch.name}</span>
-        </div>
-        <div className="branch-item-meta branch-item-subtitle">{branch.name}</div>
-      </div>
-      <div className="branch-item-actions">
-        {shouldShowRemoteDeleteAction(branch) ? (
-          <button
-            aria-label={`Delete ${branch.name}`}
-            className="ghost-button ghost-button-icon ghost-button-plain branch-action-button"
-            disabled={!branch.canDelete}
-            onClick={onDelete}
-            title={branch.canDelete ? "Delete remote branch" : branch.disabledReason}
-            type="button"
-          >
-            <Trash2 aria-hidden="true" size={14} strokeWidth={1.8} />
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export function BranchPane({
   localBranches,
-  remoteBranches,
   homeDir,
   loading,
   refreshing,
@@ -191,7 +147,6 @@ export function BranchPane({
   onRefresh,
   onUpdateLocalBranch,
   onDeleteLocalBranch,
-  onDeleteRemoteBranch,
 }: BranchPaneProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const groups = groupBranches(localBranches);
@@ -211,7 +166,7 @@ export function BranchPane({
   return (
     <section className="pane">
       <header className="pane-header">
-        <span>Branches</span>
+        <span>Target</span>
         <div className="pane-actions">
           <button
             aria-label={refreshing ? "Refreshing" : "Refresh"}
@@ -228,7 +183,6 @@ export function BranchPane({
         <div className="repo-root">{repoRoot ? formatDisplayPath(repoRoot, homeDir) : "Loading repository..."}</div>
         {loading ? <div className="empty-state">Loading branches...</div> : null}
         <section className="branch-section">
-          <div className="branch-section-title">Local branches</div>
           <div className="branch-list">
             {groups.map((group) => {
               if (group.prefix === null) {
@@ -278,24 +232,6 @@ export function BranchPane({
                 </div>
               );
             })}
-          </div>
-        </section>
-        <section className="branch-section">
-          <div className="branch-section-title">Remote branches</div>
-          <div className="branch-list">
-            {remoteBranches.map((branch) => (
-              <RemoteBranchItem
-                key={branch.name}
-                branch={branch}
-                onDelete={() =>
-                  onDeleteRemoteBranch(
-                    branch.remoteName ?? "origin",
-                    branch.shortName ?? branch.displayName ?? branch.name,
-                    branch.name,
-                  )
-                }
-              />
-            ))}
           </div>
         </section>
       </div>

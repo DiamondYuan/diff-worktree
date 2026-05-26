@@ -4,7 +4,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import type { BranchLists, BranchStatus, RepoSummary, SyncStatus } from "../../shared/types";
+import type { BranchStatus, RepoSummary, SyncStatus } from "../../shared/types";
 
 const execFileAsync = promisify(execFile);
 
@@ -135,7 +135,6 @@ async function getLocalBranchStatus(
   const disabledReason = getUpdateDisabledReason(upstreamName, ahead, behind);
 
   return {
-    scope: "local",
     name,
     displayName: name,
     isCurrent: name === currentBranch,
@@ -168,59 +167,8 @@ export async function listLocalBranches(repoRoot: string): Promise<BranchStatus[
   );
 }
 
-export async function listRemoteBranches(repoRoot: string): Promise<BranchStatus[]> {
-  const output = await runGit(repoRoot, [
-    "for-each-ref",
-    "--sort=-committerdate",
-    "--format=%(refname:short)\t%(objectname)\t%(contents:subject)\t%(committerdate:iso-strict)\t%(symref)",
-    "refs/remotes",
-  ]);
-
-  const lines = output ? output.split("\n") : [];
-
-  return lines
-    .map((line) => {
-      const [name, lastCommitOid, lastCommitMessage, lastCommitAuthorDate, symref] = line.split("\t");
-      if (symref || name.endsWith("/HEAD")) {
-        return null;
-      }
-
-      const slashIndex = name.indexOf("/");
-      const remoteName = slashIndex === -1 ? undefined : name.slice(0, slashIndex);
-      const shortName = slashIndex === -1 ? name : name.slice(slashIndex + 1);
-      const isProtectedRemoteMain = remoteName === "origin" && shortName === "main";
-
-      return {
-        scope: "remote" as const,
-        name,
-        displayName: shortName,
-        remoteName,
-        shortName,
-        isCurrent: false,
-        ahead: 0,
-        behind: 0,
-        syncStatus: "upToDate" as const,
-        lastCommitOid,
-        lastCommitMessage,
-        lastCommitAuthorDate,
-        canDelete: !isProtectedRemoteMain,
-        canUpdate: false,
-        disabledReason: isProtectedRemoteMain ? "Protected remote branch." : undefined,
-      };
-    })
-    .filter((branch): branch is BranchStatus => branch !== null);
-}
-
-export async function listBranches(repoRoot: string): Promise<BranchLists> {
-  const [localBranches, remoteBranches] = await Promise.all([
-    listLocalBranches(repoRoot),
-    listRemoteBranches(repoRoot),
-  ]);
-
-  return {
-    localBranches,
-    remoteBranches,
-  };
+export async function listBranches(repoRoot: string): Promise<BranchStatus[]> {
+  return listLocalBranches(repoRoot);
 }
 
 async function getBranchUpstreamConfig(repoRoot: string, branchName: string) {
@@ -279,19 +227,6 @@ export async function deleteLocalBranch(repoRoot: string, branchName: string): P
     await runGit(repoRoot, ["branch", "-d", branchName]);
   } catch (error) {
     throw new Error(getErrorMessage(error, `Failed to delete local branch ${branchName}.`));
-  }
-}
-
-export async function deleteRemoteBranch(repoRoot: string, remoteName: string, branchName: string): Promise<void> {
-  if (remoteName === "origin" && branchName === "main") {
-    throw new Error("Protected remote branch.");
-  }
-
-  try {
-    await runGit(repoRoot, ["push", remoteName, "--delete", branchName]);
-    await tryRunGit(repoRoot, ["branch", "-dr", `${remoteName}/${branchName}`]);
-  } catch (error) {
-    throw new Error(getErrorMessage(error, `Failed to delete remote branch ${remoteName}/${branchName}.`));
   }
 }
 

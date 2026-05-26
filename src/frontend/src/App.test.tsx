@@ -17,7 +17,6 @@ const api = vi.hoisted(() => ({
   saveWorkspaceFile: vi.fn(),
   updateLocalBranch: vi.fn(),
   deleteLocalBranch: vi.fn(),
-  deleteRemoteBranch: vi.fn(),
   useRemoteVersion: vi.fn(),
 }));
 
@@ -25,7 +24,6 @@ vi.mock("./api/client", () => api);
 
 function makeLocalBranch(name: string, overrides: Record<string, unknown> = {}) {
   return {
-    scope: "local" as const,
     name,
     displayName: name,
     isCurrent: name === "main",
@@ -41,34 +39,8 @@ function makeLocalBranch(name: string, overrides: Record<string, unknown> = {}) 
   };
 }
 
-function makeRemoteBranch(name: string, overrides: Record<string, unknown> = {}) {
-  const slashIndex = name.indexOf("/");
-  const shortName = slashIndex === -1 ? name : name.slice(slashIndex + 1);
-
-  return {
-    scope: "remote" as const,
-    name,
-    displayName: shortName,
-    remoteName: slashIndex === -1 ? undefined : name.slice(0, slashIndex),
-    shortName,
-    isCurrent: false,
-    ahead: 0,
-    behind: 0,
-    syncStatus: "upToDate" as const,
-    lastCommitOid: "def",
-    lastCommitMessage: "msg",
-    lastCommitAuthorDate: "2026-03-21T00:00:00Z",
-    canDelete: true,
-    canUpdate: false,
-    ...overrides,
-  };
-}
-
-function makeBranchLists(localBranches = [makeLocalBranch("main")], remoteBranches = [] as ReturnType<typeof makeRemoteBranch>[]) {
-  return {
-    localBranches,
-    remoteBranches,
-  };
+function makeBranchLists(localBranches = [makeLocalBranch("main")]) {
+  return localBranches;
 }
 
 vi.mock("./components/DiffViewerPane", () => ({
@@ -109,7 +81,6 @@ describe("App", () => {
     api.saveWorkspaceFile.mockResolvedValue({ path: "src/a.ts", saved: true });
     api.updateLocalBranch.mockResolvedValue(makeBranchLists());
     api.deleteLocalBranch.mockResolvedValue(makeBranchLists());
-    api.deleteRemoteBranch.mockResolvedValue(makeBranchLists());
     api.useRemoteVersion.mockResolvedValue({ ok: true });
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
@@ -607,19 +578,4 @@ describe("App", () => {
     });
   });
 
-  it("deletes a remote branch without making it selectable", async () => {
-    api.getBranches.mockResolvedValue(makeBranchLists([makeLocalBranch("main")], [makeRemoteBranch("origin/foo")]));
-    api.deleteRemoteBranch.mockResolvedValue(makeBranchLists([makeLocalBranch("main")], []));
-    api.getDiffTree.mockResolvedValue([]);
-
-    render(<App />);
-
-    expect(await screen.findByText("Remote branches")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Delete origin/foo" }));
-
-    await waitFor(() => {
-      expect(api.deleteRemoteBranch).toHaveBeenCalledWith("origin", "foo");
-      expect(screen.queryByText("foo")).not.toBeInTheDocument();
-    });
-  });
 });
