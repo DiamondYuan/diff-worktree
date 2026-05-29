@@ -98,9 +98,17 @@ async function readEntryDiff(
   return { left, right };
 }
 
-function computeReviewHash(repoRoot: string, entry: DiffEntry, left: string, right: string) {
+function computeReviewHash(
+  repoRoot: string,
+  baseBranch: string,
+  entry: DiffEntry,
+  left: string,
+  right: string,
+) {
   return createHash("md5")
     .update(repoRoot)
+    .update("\0")
+    .update(baseBranch)
     .update("\0")
     .update(entry.path)
     .update("\0")
@@ -197,7 +205,10 @@ export async function listDiffTree(repoRoot: string, baseBranch: string): Promis
   await Promise.all(
     entries.map(async (entry) => {
       const { left, right } = await readEntryDiff(repoRoot, baseBranch, entry);
-      reviewHashByPath.set(entry.path, computeReviewHash(repoRoot, entry, left.content, right.content));
+      reviewHashByPath.set(
+        entry.path,
+        computeReviewHash(repoRoot, baseBranch, entry, left.content, right.content),
+      );
     }),
   );
   const roots = new Map<string, TreeNodeBuilder>();
