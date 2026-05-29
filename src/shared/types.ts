@@ -42,6 +42,10 @@ export interface DiffTreeNode {
     additions: number;
     deletions: number;
   };
+  // md5 over (repoRoot, path, base content, workspace content); only on files.
+  reviewHash?: string;
+  // True when reviewHash matches the locally persisted reviewed hash.
+  reviewed?: boolean;
 }
 
 export interface DiffFilePayload {

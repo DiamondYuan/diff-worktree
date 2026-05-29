@@ -144,6 +144,33 @@ describe("DiffTreePane", () => {
     expect(screen.getByRole("button", { name: "src" })).toHaveFocus();
   });
 
+  it("toggles a review checkbox and reports the new state with the review progress", () => {
+    const onToggleReview = vi.fn();
+    render(
+      <DiffTreePane
+        loading={false}
+        nodes={[
+          { path: "a.ts", name: "a.ts", type: "file", changeType: "modified", reviewHash: "hash-a", reviewed: false },
+          { path: "b.ts", name: "b.ts", type: "file", changeType: "modified", reviewHash: "hash-b", reviewed: true },
+        ]}
+        onSelectFile={vi.fn()}
+        onToggleReview={onToggleReview}
+        selectedBranch="main"
+      />,
+    );
+
+    expect(screen.getByText("1/2 reviewed")).toBeInTheDocument();
+
+    const checkbox = screen.getByRole("checkbox", { name: "Mark a.ts as reviewed" });
+    expect(checkbox).not.toBeChecked();
+
+    fireEvent.click(checkbox);
+
+    expect(onToggleReview).toHaveBeenCalledWith(expect.objectContaining({ path: "a.ts" }), true);
+    expect(checkbox).toBeChecked();
+    expect(screen.getByText("2/2 reviewed")).toBeInTheDocument();
+  });
+
   it("renders the richer synced empty state when there are no changed files", () => {
     render(
       <DiffTreePane

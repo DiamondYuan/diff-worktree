@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
   getDiffFile: vi.fn(),
   refreshRepo: vi.fn(),
   saveWorkspaceFile: vi.fn(),
+  setReviewState: vi.fn(),
   updateLocalBranch: vi.fn(),
   deleteLocalBranch: vi.fn(),
   useRemoteVersion: vi.fn(),
@@ -82,6 +83,7 @@ describe("App", () => {
     api.updateLocalBranch.mockResolvedValue(makeBranchLists());
     api.deleteLocalBranch.mockResolvedValue(makeBranchLists());
     api.useRemoteVersion.mockResolvedValue({ ok: true });
+    api.setReviewState.mockResolvedValue({ ok: true });
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 

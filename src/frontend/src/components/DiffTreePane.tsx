@@ -13,6 +13,7 @@ interface DiffTreePaneProps {
   onSelectFile: (filePath: string) => void;
   onSelectItem?: (node: DiffTreeNode) => void;
   onUseRemote?: (filePath: string) => void;
+  onToggleReview?: (node: DiffTreeNode, reviewed: boolean) => void;
 }
 
 interface VisibleTreeNode {
@@ -89,6 +90,20 @@ function collectDirectoryPaths(nodes: DiffTreeNode[]): string[] {
   return paths;
 }
 
+function collectReviewableFiles(nodes: DiffTreeNode[], acc: DiffTreeNode[] = []): DiffTreeNode[] {
+  for (const node of nodes) {
+    if (node.type === "file") {
+      if (node.reviewHash) {
+        acc.push(node);
+      }
+    } else {
+      collectReviewableFiles(node.children ?? [], acc);
+    }
+  }
+
+  return acc;
+}
+
 function flattenVisibleNodes(
   nodes: DiffTreeNode[],
   collapsedPaths: Set<string>,
@@ -133,12 +148,38 @@ export function DiffTreePane({
   onSelectFile,
   onSelectItem,
   onUseRemote,
+  onToggleReview,
 }: DiffTreePaneProps) {
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  // Keyed by reviewHash so an optimistic toggle survives tree reloads, yet
+  // stops applying once a file's content (and thus its hash) changes.
+  const [reviewOverrides, setReviewOverrides] = useState<Map<string, boolean>>(new Map());
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
   const activePath = selectedPath ?? selectedFilePath;
   const visibleNodes = flattenVisibleNodes(nodes, collapsedPaths);
+  const reviewableFiles = collectReviewableFiles(nodes);
+
+  function isReviewed(node: DiffTreeNode) {
+    if (!node.reviewHash) {
+      return false;
+    }
+
+    const override = reviewOverrides.get(node.reviewHash);
+    return override ?? Boolean(node.reviewed);
+  }
+
+  const reviewedCount = reviewableFiles.reduce((total, node) => total + (isReviewed(node) ? 1 : 0), 0);
+
+  function handleToggleReview(node: DiffTreeNode) {
+    if (!node.reviewHash) {
+      return;
+    }
+
+    const next = !isReviewed(node);
+    setReviewOverrides((current) => new Map(current).set(node.reviewHash as string, next));
+    onToggleReview?.(node, next);
+  }
 
   useEffect(() => {
     const validPaths = new Set(collectDirectoryPaths(nodes));
@@ -248,6 +289,11 @@ export function DiffTreePane({
     <section className="pane">
       <header className="pane-header">
         <span className="pane-meta">{selectedBranch ? `${selectedBranch} vs workspace` : "no branch"}</span>
+        {reviewableFiles.length > 0 ? (
+          <span className="pane-meta tree-review-progress">
+            {reviewedCount}/{reviewableFiles.length} reviewed
+          </span>
+        ) : null}
       </header>
       <div className={`pane-body${!loading && nodes.length === 0 ? " pane-body-empty" : ""}`}>
         {loading ? <div className="empty-state">Loading diff tree...</div> : null}
@@ -258,10 +304,12 @@ export function DiffTreePane({
               const selected = activePath === item.node.path;
               const isDirectory = item.node.type === "directory";
               const expanded = isDirectory && !collapsedPaths.has(item.node.path);
+              const canReview = !isDirectory && Boolean(item.node.reviewHash);
+              const reviewed = canReview && isReviewed(item.node);
 
               return (
                 <div
-                  className={`tree-row${selected ? " tree-row-selected" : ""}`}
+                  className={`tree-row${selected ? " tree-row-selected" : ""}${reviewed ? " tree-row-reviewed" : ""}`}
                   data-depth={item.depth}
                   key={item.node.path}
                   style={rowStyle(item.depth)}
@@ -278,6 +326,15 @@ export function DiffTreePane({
                     >
                       <ChevronRight className={`tree-directory-chevron${expanded ? " tree-directory-chevron-open" : ""}`} size={14} strokeWidth={1.8} />
                     </button>
+                  ) : canReview ? (
+                    <input
+                      aria-label={`Mark ${item.node.name} as reviewed`}
+                      checked={reviewed}
+                      className="tree-review-checkbox"
+                      onChange={() => handleToggleReview(item.node)}
+                      onClick={(event) => event.stopPropagation()}
+                      type="checkbox"
+                    />
                   ) : (
                     <span aria-hidden="true" className="tree-toggle-spacer" />
                   )}

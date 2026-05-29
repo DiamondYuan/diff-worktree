@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -79,6 +80,34 @@ function readWorkspaceFile(repoRoot: string, filePath: string): FileReadResult {
   }
 
   return toFileReadResult(fs.readFileSync(absolutePath));
+}
+
+const EMPTY_RESULT: FileReadResult = { content: "", isBinary: false, tooLarge: false };
+
+async function readEntryDiff(
+  repoRoot: string,
+  baseBranch: string,
+  entry: DiffEntry,
+): Promise<{ left: FileReadResult; right: FileReadResult }> {
+  const left =
+    entry.changeType === "added"
+      ? EMPTY_RESULT
+      : await readGitFile(repoRoot, baseBranch, entry.oldPath ?? entry.path);
+  const right = entry.changeType === "deleted" ? EMPTY_RESULT : readWorkspaceFile(repoRoot, entry.path);
+
+  return { left, right };
+}
+
+function computeReviewHash(repoRoot: string, entry: DiffEntry, left: string, right: string) {
+  return createHash("md5")
+    .update(repoRoot)
+    .update("\0")
+    .update(entry.path)
+    .update("\0")
+    .update(left)
+    .update("\0")
+    .update(right)
+    .digest("hex");
 }
 
 function parseTrackedDiffLine(line: string): DiffEntry {
@@ -164,6 +193,13 @@ function toTree(builderMap: Map<string, TreeNodeBuilder>): DiffTreeNode[] {
 
 export async function listDiffTree(repoRoot: string, baseBranch: string): Promise<DiffTreeNode[]> {
   const entries = await listDiffEntries(repoRoot, baseBranch);
+  const reviewHashByPath = new Map<string, string>();
+  await Promise.all(
+    entries.map(async (entry) => {
+      const { left, right } = await readEntryDiff(repoRoot, baseBranch, entry);
+      reviewHashByPath.set(entry.path, computeReviewHash(repoRoot, entry, left.content, right.content));
+    }),
+  );
   const roots = new Map<string, TreeNodeBuilder>();
 
   for (const entry of entries) {
@@ -189,6 +225,7 @@ export async function listDiffTree(repoRoot: string, baseBranch: string): Promis
               type: "file",
               changeType: entry.changeType,
               oldPath: entry.oldPath,
+              reviewHash: reviewHashByPath.get(entry.path),
             }
           : {
               path: currentPath,
@@ -218,14 +255,7 @@ export async function getDiffFile(
     throw new Error(`No diff entry found for ${targetPath}.`);
   }
 
-  const leftResult =
-    entry.changeType === "added"
-      ? { content: "", isBinary: false, tooLarge: false }
-      : await readGitFile(repoRoot, baseBranch, entry.oldPath ?? entry.path);
-  const rightResult =
-    entry.changeType === "deleted"
-      ? { content: "", isBinary: false, tooLarge: false }
-      : readWorkspaceFile(repoRoot, entry.path);
+  const { left: leftResult, right: rightResult } = await readEntryDiff(repoRoot, baseBranch, entry);
 
   return {
     path: entry.path,

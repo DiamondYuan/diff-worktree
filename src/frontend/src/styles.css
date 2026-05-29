@@ -369,6 +369,25 @@ body {
   display: block;
 }
 
+.tree-review-checkbox {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  justify-self: center;
+  cursor: pointer;
+  accent-color: #0f6c0f;
+}
+
+.tree-row-reviewed .tree-file-label,
+.tree-row-reviewed .tree-file-hint {
+  color: #8a8a8a;
+}
+
+.tree-review-progress {
+  margin-left: auto;
+  color: #0f6c0f;
+}
+
 .tree-entry {
   min-width: 0;
   padding: 0;

@@ -127,4 +127,21 @@ describe("listDiffTree", () => {
       ]),
     );
   });
+
+  it("attaches a content-derived review hash to each file that changes with the content", async () => {
+    const repoRoot = createRepo();
+    commitFile(repoRoot, "src/a.ts", "export const a = 1;\n", "feat: a");
+    fs.writeFileSync(path.join(repoRoot, "src/a.ts"), "export const a = 2;\n");
+
+    const firstFiles = flattenFiles(await listDiffTree(repoRoot, "main"));
+    const first = firstFiles.find((node) => node.path === "src/a.ts");
+    expect(first?.reviewHash).toMatch(/^[0-9a-f]{32}$/);
+
+    fs.writeFileSync(path.join(repoRoot, "src/a.ts"), "export const a = 3;\n");
+    const secondFiles = flattenFiles(await listDiffTree(repoRoot, "main"));
+    const second = secondFiles.find((node) => node.path === "src/a.ts");
+
+    expect(second?.reviewHash).toMatch(/^[0-9a-f]{32}$/);
+    expect(second?.reviewHash).not.toBe(first?.reviewHash);
+  });
 });

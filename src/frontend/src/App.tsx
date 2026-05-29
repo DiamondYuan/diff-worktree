@@ -8,6 +8,7 @@ import {
   getRepoSummary,
   refreshRepo,
   saveWorkspaceFile,
+  setReviewState,
   updateLocalBranch,
   useRemoteVersion,
 } from "./api/client";
@@ -416,6 +417,19 @@ export function App() {
     }
   }
 
+  async function handleToggleReview(node: DiffTreeNode, reviewed: boolean) {
+    if (!node.reviewHash) {
+      return;
+    }
+
+    try {
+      await setReviewState(node.path, node.reviewHash, reviewed);
+      setError(undefined);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update review state.");
+    }
+  }
+
   function handleSelectTreeItem(node: DiffTreeNode) {
     setSelectedTreePath(node.path);
 
@@ -448,6 +462,7 @@ export function App() {
         nodes={diffTree}
         onSelectFile={setSelectedFilePath}
         onSelectItem={handleSelectTreeItem}
+        onToggleReview={handleToggleReview}
         onUseRemote={handleUseRemote}
         selectedBranch={selectedBranch}
         selectedPath={selectedTreePath}

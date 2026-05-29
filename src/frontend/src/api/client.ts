@@ -39,6 +39,14 @@ export function saveWorkspaceFile(path: string, content: string) {
   });
 }
 
+export function setReviewState(path: string, reviewHash: string, reviewed: boolean) {
+  return requestJson<{ ok: true }>("/api/review", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path, reviewHash, reviewed }),
+  });
+}
+
 export function useRemoteVersion(baseBranch: string, filePath: string) {
   return requestJson<{ ok: true }>("/api/use-remote", {
     method: "POST",

@@ -38,6 +38,8 @@ export interface DiffTreeNode {
   changeType?: ChangeType;
   oldPath?: string;
   children?: DiffTreeNode[];
+  reviewHash?: string;
+  reviewed?: boolean;
 }
 
 export interface DiffFilePayload {
