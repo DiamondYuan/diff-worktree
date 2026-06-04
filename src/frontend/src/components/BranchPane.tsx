@@ -165,7 +165,16 @@ export function BranchPane({
   const groups = groupBranches(localBranches);
 
   useEffect(() => {
-    setPatternText(formatPatternText(highlightFilePatterns));
+    // Only resync from props on external changes (e.g. reset). Avoid reformatting
+    // the textarea while the user is mid-edit, which would strip a just-typed
+    // trailing comma before they can type the next pattern.
+    setPatternText((current) => {
+      const currentPatterns = parsePatternText(current);
+      const sameAsProps =
+        currentPatterns.length === highlightFilePatterns.length &&
+        currentPatterns.every((pattern, index) => pattern === highlightFilePatterns[index]);
+      return sameAsProps ? current : formatPatternText(highlightFilePatterns);
+    });
   }, [highlightFilePatterns]);
 
   function toggleGroup(prefix: string) {
@@ -277,39 +286,56 @@ export function BranchPane({
           </button>
         </div>
         {highlightSettingsOpen ? (
-          <div aria-label="高亮规则设置" className="highlight-settings-popover" role="dialog">
-            <div className="highlight-settings-header">
-              <span className="highlight-settings-title">高亮规则</span>
-              <button
-                aria-label="关闭"
-                className="ghost-button ghost-button-icon ghost-button-plain highlight-settings-close"
-                onClick={() => setHighlightSettingsOpen(false)}
-                title="关闭"
-                type="button"
-              >
-                <X aria-hidden="true" size={14} strokeWidth={1.8} />
-              </button>
-            </div>
-            <textarea
-              aria-label="高亮规则"
-              className="highlight-settings-input"
-              onChange={(event) => {
-                const nextText = event.target.value;
-                setPatternText(nextText);
-                onHighlightFilePatternsChange(parsePatternText(nextText));
-              }}
-              placeholder="*.test.ts, *.spec.ts"
-              value={patternText}
-            />
-            <div className="highlight-settings-footer">
-              <span className="highlight-settings-hint">逗号分隔多个 glob 规则</span>
-              <button
-                className="ghost-button highlight-settings-reset"
-                onClick={() => onHighlightFilePatternsChange(defaultHighlightFilePatterns)}
-                type="button"
-              >
-                恢复默认
-              </button>
+          <div
+            className="highlight-settings-overlay"
+            onClick={() => setHighlightSettingsOpen(false)}
+            role="presentation"
+          >
+            <div
+              aria-label="高亮规则设置"
+              className="highlight-settings-modal"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+            >
+              <div className="highlight-settings-titlebar">
+                <span className="highlight-settings-title">
+                  <Settings2 aria-hidden="true" size={14} strokeWidth={1.8} />
+                  高亮规则
+                </span>
+                <button
+                  aria-label="关闭"
+                  className="ghost-button ghost-button-icon ghost-button-plain highlight-settings-close"
+                  onClick={() => setHighlightSettingsOpen(false)}
+                  title="关闭"
+                  type="button"
+                >
+                  <X aria-hidden="true" size={16} strokeWidth={1.8} />
+                </button>
+              </div>
+              <div className="highlight-settings-body">
+                <textarea
+                  aria-label="高亮规则"
+                  className="highlight-settings-input"
+                  onBlur={() => setPatternText(formatPatternText(highlightFilePatterns))}
+                  onChange={(event) => {
+                    const nextText = event.target.value;
+                    setPatternText(nextText);
+                    onHighlightFilePatternsChange(parsePatternText(nextText));
+                  }}
+                  placeholder="*.test.ts, *.spec.ts"
+                  value={patternText}
+                />
+                <div className="highlight-settings-footer">
+                  <span className="highlight-settings-hint">逗号分隔多个 glob 规则</span>
+                  <button
+                    className="ghost-button highlight-settings-reset"
+                    onClick={() => onHighlightFilePatternsChange(defaultHighlightFilePatterns)}
+                    type="button"
+                  >
+                    恢复默认
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : null}

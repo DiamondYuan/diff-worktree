@@ -8,8 +8,10 @@ export const DEFAULT_HIGHLIGHT_FILE_PATTERNS = [
 ];
 
 export function parsePatternText(text: string): string[] {
+  // Accept both half-width "," and full-width "，" separators; a glob pattern
+  // never legitimately contains either, and Chinese IME often produces "，".
   return text
-    .split(",")
+    .split(/[,，]/)
     .map((pattern) => pattern.trim())
     .filter(Boolean);
 }

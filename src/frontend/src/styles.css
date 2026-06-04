@@ -317,41 +317,71 @@ body {
   color: #1f1f1f;
 }
 
-.highlight-settings-popover {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 44px;
-  z-index: 10;
-  display: grid;
-  gap: 8px;
-  border: 1px solid #d4d4d4;
-  border-radius: 6px;
-  background: #ffffff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
-  padding: 12px;
+/* Centered modal with a dimming overlay (click outside to close). */
+.highlight-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 24px;
 }
 
-.highlight-settings-header {
+/* VSCode editor-window styling: a title bar with icon + close, then the body. */
+.highlight-settings-modal {
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #c8c8c8;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.highlight-settings-titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 12px;
+  background: #f3f3f3;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .highlight-settings-title {
-  color: #1f1f1f;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #3b3b3b;
+  font-size: 13px;
   font-weight: 600;
 }
 
+.highlight-settings-title svg {
+  color: #616161;
+}
+
 .highlight-settings-close {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
   color: #616161;
 }
 
 .highlight-settings-close:hover,
 .highlight-settings-close:focus-visible {
+  background: rgba(0, 0, 0, 0.08);
   color: #1f1f1f;
+}
+
+.highlight-settings-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 16px;
 }
 
 .highlight-settings-input {
@@ -359,25 +389,25 @@ body {
   min-height: 64px;
   min-width: 0;
   box-sizing: border-box;
-  border: 1px solid #c8c8c8;
-  border-radius: 4px;
-  background: #fbfbfb;
+  border: 1px solid #cecece;
+  border-radius: 2px;
+  background: #ffffff;
   color: #1f1f1f;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.5;
-  padding: 7px 9px;
+  padding: 6px 8px;
   resize: vertical;
 }
 
 .highlight-settings-input::placeholder {
-  color: #9e9e9e;
+  color: #a6a6a6;
 }
 
 .highlight-settings-input:focus {
-  border-color: #0078d4;
-  background: #ffffff;
-  outline: none;
+  border-color: #0090f1;
+  outline: 1px solid #0090f1;
+  outline-offset: -1px;
 }
 
 .highlight-settings-footer {
@@ -389,8 +419,18 @@ body {
 
 .highlight-settings-hint {
   margin: 0;
-  color: #757575;
+  color: #6d6d6d;
   font-size: 11px;
+}
+
+.highlight-settings-reset {
+  background: #e4e6f1;
+  border-color: transparent;
+  color: #3b3b3b;
+}
+
+.highlight-settings-reset:hover {
+  background: #d5d8ea;
 }
 
 .branch-item-meta {

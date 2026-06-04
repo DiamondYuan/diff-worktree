@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BranchPane } from "./BranchPane";
@@ -149,5 +149,72 @@ describe("BranchPane", () => {
     fireEvent.click(screen.getByRole("button", { name: "恢复默认" }));
 
     expect(onHighlightFilePatternsChange).toHaveBeenCalledWith(defaultHighlightFilePatterns);
+  });
+
+  it("keeps a just-typed trailing comma in the input while editing", () => {
+    const onHighlightFilePatternsChange = vi.fn();
+
+    const { rerender } = renderBranchPane({
+      highlightFilePatterns: ["*.spec.ts"],
+      onHighlightFilePatternsChange,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "配置高亮规则" }));
+
+    const input = screen.getByRole("textbox", { name: "高亮规则" });
+    fireEvent.change(input, { target: { value: "*.spec.ts," } });
+
+    // The parent re-renders with the parsed (unchanged) patterns; the trailing
+    // comma must survive so the user can type the next pattern.
+    rerender(
+      <BranchPane
+        defaultHighlightFilePatterns={defaultHighlightFilePatterns}
+        highlightFilePatterns={["*.spec.ts"]}
+        highlightFilesEnabled={false}
+        localBranches={[]}
+        loading={false}
+        refreshing={false}
+        onDeleteLocalBranch={vi.fn()}
+        onHighlightFilePatternsChange={onHighlightFilePatternsChange}
+        onHighlightFilesEnabledChange={vi.fn()}
+        onRefresh={vi.fn()}
+        onSelectBranch={vi.fn()}
+        onUpdateLocalBranch={vi.fn()}
+      />,
+    );
+
+    expect(input).toHaveValue("*.spec.ts,");
+  });
+
+  it("reformats the input to canonical text on blur", () => {
+    function Harness() {
+      const [patterns, setPatterns] = useState<string[]>(["*.spec.ts"]);
+      return (
+        <BranchPane
+          defaultHighlightFilePatterns={defaultHighlightFilePatterns}
+          highlightFilePatterns={patterns}
+          highlightFilesEnabled={false}
+          localBranches={[]}
+          loading={false}
+          refreshing={false}
+          onDeleteLocalBranch={vi.fn()}
+          onHighlightFilePatternsChange={setPatterns}
+          onHighlightFilesEnabledChange={vi.fn()}
+          onRefresh={vi.fn()}
+          onSelectBranch={vi.fn()}
+          onUpdateLocalBranch={vi.fn()}
+        />
+      );
+    }
+
+    render(<Harness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "配置高亮规则" }));
+
+    const input = screen.getByRole("textbox", { name: "高亮规则" });
+    fireEvent.change(input, { target: { value: "*.spec.ts,*.test.ts" } });
+    fireEvent.blur(input);
+
+    expect(input).toHaveValue("*.spec.ts, *.test.ts");
   });
 });
