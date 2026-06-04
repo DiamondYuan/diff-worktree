@@ -3,9 +3,12 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BranchPane } from "./BranchPane";
+
+const defaultHighlightFilePatterns = ["*.spec.ts", "*.test.ts"];
 
 function makeLocalBranch(name: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -24,55 +27,52 @@ function makeLocalBranch(name: string, overrides: Record<string, unknown> = {}) 
   };
 }
 
+function renderBranchPane(overrides: Partial<ComponentProps<typeof BranchPane>> = {}) {
+  return render(
+    <BranchPane
+      defaultHighlightFilePatterns={defaultHighlightFilePatterns}
+      highlightFilePatterns={defaultHighlightFilePatterns}
+      highlightFilesEnabled={false}
+      localBranches={[]}
+      loading={false}
+      refreshing={false}
+      onDeleteLocalBranch={vi.fn()}
+      onHighlightFilePatternsChange={vi.fn()}
+      onHighlightFilesEnabledChange={vi.fn()}
+      onRefresh={vi.fn()}
+      onSelectBranch={vi.fn()}
+      onUpdateLocalBranch={vi.fn()}
+      {...overrides}
+    />,
+  );
+}
+
 describe("BranchPane", () => {
   afterEach(() => {
     cleanup();
   });
 
   it("renders home-based repo roots with a tilde prefix", () => {
-    render(
-      <BranchPane
-        localBranches={[]}
-        highlightTestFiles={false}
-        loading={false}
-        refreshing={false}
-        repoRoot="/Users/diamondyuan/work/project"
-        homeDir="/Users/diamondyuan"
-        onDeleteLocalBranch={vi.fn()}
-        onHighlightTestFilesChange={vi.fn()}
-        onRefresh={vi.fn()}
-        onSelectBranch={vi.fn()}
-        onUpdateLocalBranch={vi.fn()}
-      />,
-    );
+    renderBranchPane({
+      repoRoot: "/Users/diamondyuan/work/project",
+      homeDir: "/Users/diamondyuan",
+    });
 
     expect(screen.getByText("~/work/project")).toBeInTheDocument();
   });
 
   it("leaves non-home repo roots unchanged", () => {
-    render(
-      <BranchPane
-        localBranches={[]}
-        highlightTestFiles={false}
-        loading={false}
-        refreshing={false}
-        repoRoot="/tmp/demo"
-        homeDir="/Users/diamondyuan"
-        onDeleteLocalBranch={vi.fn()}
-        onHighlightTestFilesChange={vi.fn()}
-        onRefresh={vi.fn()}
-        onSelectBranch={vi.fn()}
-        onUpdateLocalBranch={vi.fn()}
-      />,
-    );
+    renderBranchPane({
+      repoRoot: "/tmp/demo",
+      homeDir: "/Users/diamondyuan",
+    });
 
     expect(screen.getByText("/tmp/demo")).toBeInTheDocument();
   });
 
   it("renders local branches with their actions", () => {
-    render(
-      <BranchPane
-        localBranches={[
+    renderBranchPane({
+      localBranches: [
           makeLocalBranch("main", { isCurrent: true, canDelete: false }),
           makeLocalBranch("feature/current", {
             syncStatus: "upToDate",
@@ -95,19 +95,10 @@ describe("BranchPane", () => {
             canUpdate: false,
             disabledReason: "Requires manual rebase or merge.",
           }),
-        ]}
-        highlightTestFiles={false}
-        loading={false}
-        refreshing={false}
-        onDeleteLocalBranch={vi.fn()}
-        onHighlightTestFilesChange={vi.fn()}
-        onRefresh={vi.fn()}
-        onSelectBranch={vi.fn()}
-        onUpdateLocalBranch={vi.fn()}
-        repoRoot="/tmp/demo"
-        selectedBranch="main"
-      />,
-    );
+        ],
+      repoRoot: "/tmp/demo",
+      selectedBranch: "main",
+    });
 
     expect(screen.queryByText("Local branches")).not.toBeInTheDocument();
     expect(screen.queryByText("Remote branches")).not.toBeInTheDocument();
@@ -122,28 +113,41 @@ describe("BranchPane", () => {
     expect(screen.queryByRole("button", { name: "Update feature/no-upstream" })).not.toBeInTheDocument();
   });
 
-  it("renders a footer toggle for highlighting test files", () => {
-    const onHighlightTestFilesChange = vi.fn();
+  it("renders a footer toggle for highlighting files", () => {
+    const onHighlightFilesEnabledChange = vi.fn();
 
-    render(
-      <BranchPane
-        highlightTestFiles={true}
-        localBranches={[]}
-        loading={false}
-        refreshing={false}
-        onDeleteLocalBranch={vi.fn()}
-        onHighlightTestFilesChange={onHighlightTestFilesChange}
-        onRefresh={vi.fn()}
-        onSelectBranch={vi.fn()}
-        onUpdateLocalBranch={vi.fn()}
-      />,
-    );
+    renderBranchPane({
+      highlightFilesEnabled: true,
+      onHighlightFilesEnabledChange,
+    });
 
-    const toggle = screen.getByRole("checkbox", { name: "高亮测试文件" });
+    const toggle = screen.getByRole("checkbox", { name: "高亮文件" });
     expect(toggle).toBeChecked();
 
     fireEvent.click(toggle);
 
-    expect(onHighlightTestFilesChange).toHaveBeenCalledWith(false);
+    expect(onHighlightFilesEnabledChange).toHaveBeenCalledWith(false);
+  });
+
+  it("edits highlight patterns and restores defaults from the settings popover", () => {
+    const onHighlightFilePatternsChange = vi.fn();
+
+    renderBranchPane({
+      highlightFilePatterns: ["*.spec.ts"],
+      onHighlightFilePatternsChange,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "配置高亮规则" }));
+
+    const input = screen.getByRole("textbox", { name: "高亮规则" });
+    expect(input).toHaveValue("*.spec.ts");
+
+    fireEvent.change(input, { target: { value: "*.story.tsx, src/**/*.snap" } });
+
+    expect(onHighlightFilePatternsChange).toHaveBeenCalledWith(["*.story.tsx", "src/**/*.snap"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认" }));
+
+    expect(onHighlightFilePatternsChange).toHaveBeenCalledWith(defaultHighlightFilePatterns);
   });
 });

@@ -16,10 +16,13 @@ import { BranchPane } from "./components/BranchPane";
 import { DiffTreePane } from "./components/DiffTreePane";
 import { DiffViewerPane } from "./components/DiffViewerPane";
 import type { BranchStatus, DiffFilePayload, DiffTreeNode, RepoSummary } from "./types";
+import { DEFAULT_HIGHLIGHT_FILE_PATTERNS } from "./utils/highlightPatterns";
 
 const SESSION_SELECTED_BRANCH_KEY = "diff-worktree:selected-branch";
 const SESSION_SELECTED_FILE_KEY = "diff-worktree:selected-file";
-const LOCAL_HIGHLIGHT_TEST_FILES_KEY = "diff-worktree:highlight-test-files";
+const LOCAL_HIGHLIGHT_FILES_ENABLED_KEY = "diff-worktree:highlight-files-enabled";
+const LOCAL_HIGHLIGHT_FILE_PATTERNS_KEY = "diff-worktree:highlight-file-patterns";
+const LEGACY_LOCAL_HIGHLIGHT_TEST_FILES_KEY = "diff-worktree:highlight-test-files";
 
 function readSessionValue(key: string): string | undefined {
   if (typeof window === "undefined") {
@@ -49,15 +52,16 @@ function writeSessionValue(key: string, value: string | undefined) {
   }
 }
 
-function readLocalBoolean(key: string): boolean {
+function readLocalBoolean(key: string, fallback = false): boolean {
   if (typeof window === "undefined") {
-    return false;
+    return fallback;
   }
 
   try {
-    return window.localStorage.getItem(key) === "true";
+    const value = window.localStorage.getItem(key);
+    return value === null ? fallback : value === "true";
   } catch {
-    return false;
+    return fallback;
   }
 }
 
@@ -68,6 +72,38 @@ function writeLocalBoolean(key: string, value: boolean) {
 
   try {
     window.localStorage.setItem(key, value ? "true" : "false");
+  } catch {
+    // Ignore local storage failures and keep the app functional.
+  }
+}
+
+function readLocalStringArray(key: string, fallback: string[]): string[] {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const value = window.localStorage.getItem(key);
+    if (value === null) {
+      return fallback;
+    }
+
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) && parsed.every((item) => typeof item === "string")
+      ? parsed
+      : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocalStringArray(key: string, value: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // Ignore local storage failures and keep the app functional.
   }
@@ -140,7 +176,15 @@ export function App() {
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [treeReloadNonce, setTreeReloadNonce] = useState(0);
   const [diffReloadNonce, setDiffReloadNonce] = useState(0);
-  const [highlightTestFiles, setHighlightTestFiles] = useState(() => readLocalBoolean(LOCAL_HIGHLIGHT_TEST_FILES_KEY));
+  const [highlightFilesEnabled, setHighlightFilesEnabled] = useState(() =>
+    readLocalBoolean(
+      LOCAL_HIGHLIGHT_FILES_ENABLED_KEY,
+      readLocalBoolean(LEGACY_LOCAL_HIGHLIGHT_TEST_FILES_KEY),
+    ),
+  );
+  const [highlightFilePatterns, setHighlightFilePatterns] = useState(() =>
+    readLocalStringArray(LOCAL_HIGHLIGHT_FILE_PATTERNS_KEY, DEFAULT_HIGHLIGHT_FILE_PATTERNS),
+  );
   const [draftContent, setDraftContent] = useState("");
   const [persistedContent, setPersistedContent] = useState("");
   const [draftVersion, setDraftVersion] = useState(0);
@@ -248,8 +292,12 @@ export function App() {
   }, [selectedFilePath]);
 
   useEffect(() => {
-    writeLocalBoolean(LOCAL_HIGHLIGHT_TEST_FILES_KEY, highlightTestFiles);
-  }, [highlightTestFiles]);
+    writeLocalBoolean(LOCAL_HIGHLIGHT_FILES_ENABLED_KEY, highlightFilesEnabled);
+  }, [highlightFilesEnabled]);
+
+  useEffect(() => {
+    writeLocalStringArray(LOCAL_HIGHLIGHT_FILE_PATTERNS_KEY, highlightFilePatterns);
+  }, [highlightFilePatterns]);
 
   useEffect(() => {
     if (!selectedBranch || branchesLoading) {
@@ -476,12 +524,15 @@ export function App() {
   return (
     <main className="app-shell">
       <BranchPane
-        highlightTestFiles={highlightTestFiles}
+        defaultHighlightFilePatterns={DEFAULT_HIGHLIGHT_FILE_PATTERNS}
+        highlightFilePatterns={highlightFilePatterns}
+        highlightFilesEnabled={highlightFilesEnabled}
         localBranches={localBranches}
         homeDir={summary?.homeDir}
         loading={branchesLoading}
         onDeleteLocalBranch={handleDeleteLocalBranch}
-        onHighlightTestFilesChange={setHighlightTestFiles}
+        onHighlightFilePatternsChange={setHighlightFilePatterns}
+        onHighlightFilesEnabledChange={setHighlightFilesEnabled}
         onRefresh={handleRefresh}
         onSelectBranch={setSelectedBranch}
         onUpdateLocalBranch={handleUpdateLocalBranch}
@@ -490,7 +541,8 @@ export function App() {
         selectedBranch={selectedBranch}
       />
       <DiffTreePane
-        highlightTestFiles={highlightTestFiles}
+        highlightFilePatterns={highlightFilePatterns}
+        highlightFilesEnabled={highlightFilesEnabled}
         loading={treeLoading}
         nodes={diffTree}
         onSelectFile={setSelectedFilePath}

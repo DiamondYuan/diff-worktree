@@ -94,6 +94,7 @@ body {
   display: flex;
   flex-direction: column;
   padding-bottom: 0;
+  position: relative;
 }
 
 .branch-pane-scroll {
@@ -284,18 +285,112 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: space-between;
   min-height: 36px;
   border-top: 1px solid #e5e5e5;
   background: #f8f8f8;
   color: #424242;
-  cursor: pointer;
   flex: 0 0 auto;
   font-size: 12px;
   padding: 0 12px;
 }
 
+.pane-footer-toggle-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+
 .pane-footer-toggle input {
   margin: 0;
+}
+
+.pane-footer-settings-button {
+  color: #616161;
+  flex-shrink: 0;
+}
+
+.pane-footer-settings-button:hover,
+.pane-footer-settings-button:focus-visible {
+  color: #1f1f1f;
+}
+
+.highlight-settings-popover {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 44px;
+  z-index: 10;
+  display: grid;
+  gap: 8px;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  padding: 12px;
+}
+
+.highlight-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.highlight-settings-title {
+  color: #1f1f1f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.highlight-settings-close {
+  color: #616161;
+}
+
+.highlight-settings-close:hover,
+.highlight-settings-close:focus-visible {
+  color: #1f1f1f;
+}
+
+.highlight-settings-input {
+  width: 100%;
+  min-height: 64px;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  background: #fbfbfb;
+  color: #1f1f1f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 7px 9px;
+  resize: vertical;
+}
+
+.highlight-settings-input::placeholder {
+  color: #9e9e9e;
+}
+
+.highlight-settings-input:focus {
+  border-color: #0078d4;
+  background: #ffffff;
+  outline: none;
+}
+
+.highlight-settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.highlight-settings-hint {
+  margin: 0;
+  color: #757575;
+  font-size: 11px;
 }
 
 .branch-item-meta {

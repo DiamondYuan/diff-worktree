@@ -1,18 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BranchStatus } from "./../types";
-import { ChevronRight, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronRight, RefreshCw, Settings2, Trash2, X } from "lucide-react";
 
 import { formatDisplayPath } from "../utils/displayPath";
+import { formatPatternText, parsePatternText } from "../utils/highlightPatterns";
 
 interface BranchPaneProps {
-  highlightTestFiles: boolean;
+  defaultHighlightFilePatterns: string[];
+  highlightFilePatterns: string[];
+  highlightFilesEnabled: boolean;
   localBranches: BranchStatus[];
   homeDir?: string;
   loading: boolean;
   refreshing: boolean;
   repoRoot?: string;
   selectedBranch?: string;
-  onHighlightTestFilesChange: (highlight: boolean) => void;
+  onHighlightFilePatternsChange: (patterns: string[]) => void;
+  onHighlightFilesEnabledChange: (highlight: boolean) => void;
   onSelectBranch: (branchName: string) => void;
   onRefresh: () => void;
   onUpdateLocalBranch: (branchName: string) => void;
@@ -139,21 +143,30 @@ function LocalBranchItem({
 }
 
 export function BranchPane({
-  highlightTestFiles,
+  defaultHighlightFilePatterns,
+  highlightFilePatterns,
+  highlightFilesEnabled,
   localBranches,
   homeDir,
   loading,
   refreshing,
   repoRoot,
   selectedBranch,
-  onHighlightTestFilesChange,
+  onHighlightFilePatternsChange,
+  onHighlightFilesEnabledChange,
   onSelectBranch,
   onRefresh,
   onUpdateLocalBranch,
   onDeleteLocalBranch,
 }: BranchPaneProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [highlightSettingsOpen, setHighlightSettingsOpen] = useState(false);
+  const [patternText, setPatternText] = useState(() => formatPatternText(highlightFilePatterns));
   const groups = groupBranches(localBranches);
+
+  useEffect(() => {
+    setPatternText(formatPatternText(highlightFilePatterns));
+  }, [highlightFilePatterns]);
 
   function toggleGroup(prefix: string) {
     setCollapsedGroups((current) => {
@@ -240,14 +253,66 @@ export function BranchPane({
             </div>
           </section>
         </div>
-        <label className="pane-footer-toggle">
-          <input
-            checked={highlightTestFiles}
-            onChange={(event) => onHighlightTestFilesChange(event.target.checked)}
-            type="checkbox"
-          />
-          <span>高亮测试文件</span>
-        </label>
+        <div className="pane-footer-toggle">
+          <label className="pane-footer-toggle-main">
+            <input
+              checked={highlightFilesEnabled}
+              onChange={(event) => onHighlightFilesEnabledChange(event.target.checked)}
+              type="checkbox"
+            />
+            <span>高亮文件</span>
+          </label>
+          <button
+            aria-expanded={highlightSettingsOpen}
+            aria-label="配置高亮规则"
+            className="ghost-button ghost-button-icon ghost-button-plain pane-footer-settings-button"
+            onClick={(event) => {
+              event.preventDefault();
+              setHighlightSettingsOpen((current) => !current);
+            }}
+            title="配置高亮规则"
+            type="button"
+          >
+            <Settings2 aria-hidden="true" size={14} strokeWidth={1.8} />
+          </button>
+        </div>
+        {highlightSettingsOpen ? (
+          <div aria-label="高亮规则设置" className="highlight-settings-popover" role="dialog">
+            <div className="highlight-settings-header">
+              <span className="highlight-settings-title">高亮规则</span>
+              <button
+                aria-label="关闭"
+                className="ghost-button ghost-button-icon ghost-button-plain highlight-settings-close"
+                onClick={() => setHighlightSettingsOpen(false)}
+                title="关闭"
+                type="button"
+              >
+                <X aria-hidden="true" size={14} strokeWidth={1.8} />
+              </button>
+            </div>
+            <textarea
+              aria-label="高亮规则"
+              className="highlight-settings-input"
+              onChange={(event) => {
+                const nextText = event.target.value;
+                setPatternText(nextText);
+                onHighlightFilePatternsChange(parsePatternText(nextText));
+              }}
+              placeholder="*.test.ts, *.spec.ts"
+              value={patternText}
+            />
+            <div className="highlight-settings-footer">
+              <span className="highlight-settings-hint">逗号分隔多个 glob 规则</span>
+              <button
+                className="ghost-button highlight-settings-reset"
+                onClick={() => onHighlightFilePatternsChange(defaultHighlightFilePatterns)}
+                type="button"
+              >
+                恢复默认
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   );
