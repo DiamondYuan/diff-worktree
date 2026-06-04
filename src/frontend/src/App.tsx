@@ -19,6 +19,7 @@ import type { BranchStatus, DiffFilePayload, DiffTreeNode, RepoSummary } from ".
 
 const SESSION_SELECTED_BRANCH_KEY = "diff-worktree:selected-branch";
 const SESSION_SELECTED_FILE_KEY = "diff-worktree:selected-file";
+const LOCAL_HIGHLIGHT_TEST_FILES_KEY = "diff-worktree:highlight-test-files";
 
 function readSessionValue(key: string): string | undefined {
   if (typeof window === "undefined") {
@@ -45,6 +46,30 @@ function writeSessionValue(key: string, value: string | undefined) {
     }
   } catch {
     // Ignore session storage failures and keep the app functional.
+  }
+}
+
+function readLocalBoolean(key: string): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(key) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeLocalBoolean(key: string, value: boolean) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, value ? "true" : "false");
+  } catch {
+    // Ignore local storage failures and keep the app functional.
   }
 }
 
@@ -115,6 +140,7 @@ export function App() {
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [treeReloadNonce, setTreeReloadNonce] = useState(0);
   const [diffReloadNonce, setDiffReloadNonce] = useState(0);
+  const [highlightTestFiles, setHighlightTestFiles] = useState(() => readLocalBoolean(LOCAL_HIGHLIGHT_TEST_FILES_KEY));
   const [draftContent, setDraftContent] = useState("");
   const [persistedContent, setPersistedContent] = useState("");
   const [draftVersion, setDraftVersion] = useState(0);
@@ -220,6 +246,10 @@ export function App() {
   useEffect(() => {
     writeSessionValue(SESSION_SELECTED_FILE_KEY, selectedFilePath);
   }, [selectedFilePath]);
+
+  useEffect(() => {
+    writeLocalBoolean(LOCAL_HIGHLIGHT_TEST_FILES_KEY, highlightTestFiles);
+  }, [highlightTestFiles]);
 
   useEffect(() => {
     if (!selectedBranch || branchesLoading) {
@@ -446,10 +476,12 @@ export function App() {
   return (
     <main className="app-shell">
       <BranchPane
+        highlightTestFiles={highlightTestFiles}
         localBranches={localBranches}
         homeDir={summary?.homeDir}
         loading={branchesLoading}
         onDeleteLocalBranch={handleDeleteLocalBranch}
+        onHighlightTestFilesChange={setHighlightTestFiles}
         onRefresh={handleRefresh}
         onSelectBranch={setSelectedBranch}
         onUpdateLocalBranch={handleUpdateLocalBranch}
@@ -458,6 +490,7 @@ export function App() {
         selectedBranch={selectedBranch}
       />
       <DiffTreePane
+        highlightTestFiles={highlightTestFiles}
         loading={treeLoading}
         nodes={diffTree}
         onSelectFile={setSelectedFilePath}

@@ -90,6 +90,24 @@ body {
   padding: 0;
 }
 
+.branch-pane-body {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+.branch-pane-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.branch-pane-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .pane-meta {
   color: #616161;
   font-size: 11px;
@@ -260,6 +278,24 @@ body {
 
 .branch-action-button:disabled {
   opacity: 0.45;
+}
+
+.pane-footer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  border-top: 1px solid #e5e5e5;
+  background: #f8f8f8;
+  color: #424242;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 0 12px;
+}
+
+.pane-footer-toggle input {
+  margin: 0;
 }
 
 .branch-item-meta {
@@ -456,6 +492,10 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.tree-file-label-highlight {
+  color: #c50f1f;
 }
 
 .tree-file-hint {

@@ -91,6 +91,7 @@ describe("App", () => {
     cleanup();
     vi.useRealTimers();
     window.sessionStorage.clear();
+    window.localStorage.clear();
     vi.restoreAllMocks();
     vi.resetAllMocks();
   });
@@ -324,6 +325,45 @@ describe("App", () => {
     expect(screen.queryByText("Diff Tree")).not.toBeInTheDocument();
     expect(screen.queryByText("Diff Viewer")).not.toBeInTheDocument();
     expect(screen.getByText("main vs workspace")).toBeInTheDocument();
+  });
+
+  it("restores and persists the test file highlight toggle from local storage", async () => {
+    window.localStorage.setItem("diff-worktree:highlight-test-files", "true");
+    api.getDiffTree.mockResolvedValue([
+      {
+        path: "src",
+        name: "src",
+        type: "directory",
+        children: [
+          { path: "src/a.spec.ts", name: "a.spec.ts", type: "file", changeType: "modified" },
+          { path: "src/b.ts", name: "b.ts", type: "file", changeType: "modified" },
+        ],
+      },
+    ]);
+    api.getDiffFile.mockResolvedValue({
+      path: "src/a.spec.ts",
+      changeType: "modified",
+      language: "ts",
+      left: "old spec",
+      right: "new spec",
+      isBinary: false,
+      tooLarge: false,
+    });
+
+    render(<App />);
+
+    await screen.findByText("old spec => new spec");
+    expect(screen.getByRole("checkbox", { name: "高亮测试文件" })).toBeChecked();
+    expect(screen.getByText("a.spec.ts")).toHaveClass("tree-file-label-highlight");
+    expect(screen.getByText("b.ts")).not.toHaveClass("tree-file-label-highlight");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "高亮测试文件" }));
+
+    expect(screen.getByRole("checkbox", { name: "高亮测试文件" })).not.toBeChecked();
+    expect(screen.getByText("a.spec.ts")).not.toHaveClass("tree-file-label-highlight");
+    await waitFor(() => {
+      expect(window.localStorage.getItem("diff-worktree:highlight-test-files")).toBe("false");
+    });
   });
 
   it("autosaves only the latest draft after 500ms of idle time", async () => {

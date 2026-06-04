@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BranchPane } from "./BranchPane";
@@ -33,11 +33,13 @@ describe("BranchPane", () => {
     render(
       <BranchPane
         localBranches={[]}
+        highlightTestFiles={false}
         loading={false}
         refreshing={false}
         repoRoot="/Users/diamondyuan/work/project"
         homeDir="/Users/diamondyuan"
         onDeleteLocalBranch={vi.fn()}
+        onHighlightTestFilesChange={vi.fn()}
         onRefresh={vi.fn()}
         onSelectBranch={vi.fn()}
         onUpdateLocalBranch={vi.fn()}
@@ -51,11 +53,13 @@ describe("BranchPane", () => {
     render(
       <BranchPane
         localBranches={[]}
+        highlightTestFiles={false}
         loading={false}
         refreshing={false}
         repoRoot="/tmp/demo"
         homeDir="/Users/diamondyuan"
         onDeleteLocalBranch={vi.fn()}
+        onHighlightTestFilesChange={vi.fn()}
         onRefresh={vi.fn()}
         onSelectBranch={vi.fn()}
         onUpdateLocalBranch={vi.fn()}
@@ -92,9 +96,11 @@ describe("BranchPane", () => {
             disabledReason: "Requires manual rebase or merge.",
           }),
         ]}
+        highlightTestFiles={false}
         loading={false}
         refreshing={false}
         onDeleteLocalBranch={vi.fn()}
+        onHighlightTestFilesChange={vi.fn()}
         onRefresh={vi.fn()}
         onSelectBranch={vi.fn()}
         onUpdateLocalBranch={vi.fn()}
@@ -114,5 +120,30 @@ describe("BranchPane", () => {
     expect(screen.queryByRole("button", { name: "Update main" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Update feature/current" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Update feature/no-upstream" })).not.toBeInTheDocument();
+  });
+
+  it("renders a footer toggle for highlighting test files", () => {
+    const onHighlightTestFilesChange = vi.fn();
+
+    render(
+      <BranchPane
+        highlightTestFiles={true}
+        localBranches={[]}
+        loading={false}
+        refreshing={false}
+        onDeleteLocalBranch={vi.fn()}
+        onHighlightTestFilesChange={onHighlightTestFilesChange}
+        onRefresh={vi.fn()}
+        onSelectBranch={vi.fn()}
+        onUpdateLocalBranch={vi.fn()}
+      />,
+    );
+
+    const toggle = screen.getByRole("checkbox", { name: "高亮测试文件" });
+    expect(toggle).toBeChecked();
+
+    fireEvent.click(toggle);
+
+    expect(onHighlightTestFilesChange).toHaveBeenCalledWith(false);
   });
 });

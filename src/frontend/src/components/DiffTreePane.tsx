@@ -5,6 +5,7 @@ import { ChevronRight, File } from "lucide-react";
 import type { DiffTreeNode } from "../types";
 
 interface DiffTreePaneProps {
+  highlightTestFiles?: boolean;
   nodes: DiffTreeNode[];
   loading: boolean;
   selectedPath?: string;
@@ -68,6 +69,15 @@ function itemAriaLabel(node: DiffTreeNode) {
   }
 
   return node.name;
+}
+
+function isTestFilePath(path: string) {
+  return (
+    path.endsWith(".spec.ts") ||
+    path.endsWith(".test.ts") ||
+    path.endsWith(".spec.tsx") ||
+    path.endsWith(".test.tsx")
+  );
 }
 
 function rowStyle(depth: number): CSSProperties {
@@ -140,6 +150,7 @@ function focusItem(
 }
 
 export function DiffTreePane({
+  highlightTestFiles = false,
   nodes,
   loading,
   selectedPath,
@@ -306,6 +317,7 @@ export function DiffTreePane({
               const expanded = isDirectory && !collapsedPaths.has(item.node.path);
               const canReview = !isDirectory && Boolean(item.node.reviewHash);
               const reviewed = canReview && isReviewed(item.node);
+              const highlightTestFile = highlightTestFiles && !isDirectory && isTestFilePath(item.node.path);
 
               return (
                 <div
@@ -369,7 +381,9 @@ export function DiffTreePane({
                         </span>
                       ) : null}
                       <span className={isDirectory ? "tree-directory-label" : "tree-file-content"}>
-                        <span className="tree-file-label">{item.node.name}</span>
+                        <span className={`tree-file-label${highlightTestFile ? " tree-file-label-highlight" : ""}`}>
+                          {item.node.name}
+                        </span>
                         {!isDirectory && item.node.changeType === "renamed" && item.node.oldPath ? (
                           <span className="tree-file-hint">renamed from {item.node.oldPath}</span>
                         ) : null}

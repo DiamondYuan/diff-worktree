@@ -5,12 +5,14 @@ import { ChevronRight, RefreshCw, Trash2 } from "lucide-react";
 import { formatDisplayPath } from "../utils/displayPath";
 
 interface BranchPaneProps {
+  highlightTestFiles: boolean;
   localBranches: BranchStatus[];
   homeDir?: string;
   loading: boolean;
   refreshing: boolean;
   repoRoot?: string;
   selectedBranch?: string;
+  onHighlightTestFilesChange: (highlight: boolean) => void;
   onSelectBranch: (branchName: string) => void;
   onRefresh: () => void;
   onUpdateLocalBranch: (branchName: string) => void;
@@ -137,12 +139,14 @@ function LocalBranchItem({
 }
 
 export function BranchPane({
+  highlightTestFiles,
   localBranches,
   homeDir,
   loading,
   refreshing,
   repoRoot,
   selectedBranch,
+  onHighlightTestFilesChange,
   onSelectBranch,
   onRefresh,
   onUpdateLocalBranch,
@@ -179,61 +183,71 @@ export function BranchPane({
           </button>
         </div>
       </header>
-      <div className="pane-body">
-        <div className="repo-root">{repoRoot ? formatDisplayPath(repoRoot, homeDir) : "Loading repository..."}</div>
-        {loading ? <div className="empty-state">Loading branches...</div> : null}
-        <section className="branch-section">
-          <div className="branch-list">
-            {groups.map((group) => {
-              if (group.prefix === null) {
-                return group.branches.map((branch) => (
-                  <LocalBranchItem
-                    key={branch.name}
-                    branch={branch}
-                    displayName={branch.name}
-                    selected={selectedBranch === branch.name}
-                    onDelete={() => onDeleteLocalBranch(branch.name)}
-                    onSelect={() => onSelectBranch(branch.name)}
-                    onUpdate={() => onUpdateLocalBranch(branch.name)}
-                  />
-                ));
-              }
-
-              const collapsed = collapsedGroups.has(group.prefix);
-
-              return (
-                <div key={group.prefix} className="branch-group">
-                  <button
-                    className="branch-group-header"
-                    onClick={() => toggleGroup(group.prefix!)}
-                    type="button"
-                  >
-                    <ChevronRight
-                      className={`branch-group-chevron${collapsed ? "" : " branch-group-chevron-open"}`}
-                      size={12}
-                      strokeWidth={1.8}
+      <div className="pane-body branch-pane-body">
+        <div className="branch-pane-scroll">
+          <div className="repo-root">{repoRoot ? formatDisplayPath(repoRoot, homeDir) : "Loading repository..."}</div>
+          {loading ? <div className="empty-state">Loading branches...</div> : null}
+          <section className="branch-section">
+            <div className="branch-list">
+              {groups.map((group) => {
+                if (group.prefix === null) {
+                  return group.branches.map((branch) => (
+                    <LocalBranchItem
+                      key={branch.name}
+                      branch={branch}
+                      displayName={branch.name}
+                      selected={selectedBranch === branch.name}
+                      onDelete={() => onDeleteLocalBranch(branch.name)}
+                      onSelect={() => onSelectBranch(branch.name)}
+                      onUpdate={() => onUpdateLocalBranch(branch.name)}
                     />
-                    <span>{group.prefix}/</span>
-                    <span className="branch-group-count">{group.branches.length}</span>
-                  </button>
-                  {!collapsed
-                    ? group.branches.map((branch) => (
-                        <LocalBranchItem
-                          key={branch.name}
-                          branch={branch}
-                          displayName={branch.name.slice(group.prefix!.length + 1)}
-                          selected={selectedBranch === branch.name}
-                          onDelete={() => onDeleteLocalBranch(branch.name)}
-                          onSelect={() => onSelectBranch(branch.name)}
-                          onUpdate={() => onUpdateLocalBranch(branch.name)}
-                        />
-                      ))
-                    : null}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                  ));
+                }
+
+                const collapsed = collapsedGroups.has(group.prefix);
+
+                return (
+                  <div key={group.prefix} className="branch-group">
+                    <button
+                      className="branch-group-header"
+                      onClick={() => toggleGroup(group.prefix!)}
+                      type="button"
+                    >
+                      <ChevronRight
+                        className={`branch-group-chevron${collapsed ? "" : " branch-group-chevron-open"}`}
+                        size={12}
+                        strokeWidth={1.8}
+                      />
+                      <span>{group.prefix}/</span>
+                      <span className="branch-group-count">{group.branches.length}</span>
+                    </button>
+                    {!collapsed
+                      ? group.branches.map((branch) => (
+                          <LocalBranchItem
+                            key={branch.name}
+                            branch={branch}
+                            displayName={branch.name.slice(group.prefix!.length + 1)}
+                            selected={selectedBranch === branch.name}
+                            onDelete={() => onDeleteLocalBranch(branch.name)}
+                            onSelect={() => onSelectBranch(branch.name)}
+                            onUpdate={() => onUpdateLocalBranch(branch.name)}
+                          />
+                        ))
+                      : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+        <label className="pane-footer-toggle">
+          <input
+            checked={highlightTestFiles}
+            onChange={(event) => onHighlightTestFilesChange(event.target.checked)}
+            type="checkbox"
+          />
+          <span>高亮测试文件</span>
+        </label>
       </div>
     </section>
   );

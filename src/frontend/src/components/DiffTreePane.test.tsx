@@ -171,6 +171,44 @@ describe("DiffTreePane", () => {
     expect(screen.getByText("2/2 reviewed")).toBeInTheDocument();
   });
 
+  it("renders spec and test TypeScript filenames in red when enabled", () => {
+    render(
+      <DiffTreePane
+        highlightTestFiles={true}
+        loading={false}
+        nodes={[
+          { path: "src/a.spec.ts", name: "a.spec.ts", type: "file", changeType: "modified" },
+          { path: "src/b.test.ts", name: "b.test.ts", type: "file", changeType: "modified" },
+          { path: "src/c.spec.tsx", name: "c.spec.tsx", type: "file", changeType: "modified" },
+          { path: "src/d.test.tsx", name: "d.test.tsx", type: "file", changeType: "modified" },
+          { path: "src/c.ts", name: "c.ts", type: "file", changeType: "modified" },
+        ]}
+        onSelectFile={vi.fn()}
+        selectedBranch="main"
+      />,
+    );
+
+    expect(screen.getByText("a.spec.ts")).toHaveClass("tree-file-label-highlight");
+    expect(screen.getByText("b.test.ts")).toHaveClass("tree-file-label-highlight");
+    expect(screen.getByText("c.spec.tsx")).toHaveClass("tree-file-label-highlight");
+    expect(screen.getByText("d.test.tsx")).toHaveClass("tree-file-label-highlight");
+    expect(screen.getByText("c.ts")).not.toHaveClass("tree-file-label-highlight");
+  });
+
+  it("does not highlight test filenames when disabled", () => {
+    render(
+      <DiffTreePane
+        highlightTestFiles={false}
+        loading={false}
+        nodes={[{ path: "src/a.spec.ts", name: "a.spec.ts", type: "file", changeType: "modified" }]}
+        onSelectFile={vi.fn()}
+        selectedBranch="main"
+      />,
+    );
+
+    expect(screen.getByText("a.spec.ts")).not.toHaveClass("tree-file-label-highlight");
+  });
+
   it("renders the richer synced empty state when there are no changed files", () => {
     render(
       <DiffTreePane
