@@ -22,6 +22,7 @@ interface DiffTreePaneProps {
 interface VisibleTreeNode {
   node: DiffTreeNode;
   depth: number;
+  displayName: string;
   parentPath?: string;
 }
 
@@ -73,6 +74,34 @@ function itemAriaLabel(node: DiffTreeNode) {
   return node.name;
 }
 
+function compactDirectoryNode(
+  node: DiffTreeNode,
+  collapsedPaths: Set<string>,
+): { node: DiffTreeNode; displayName: string } {
+  const segments = [node.name];
+  let current = node;
+
+  while (current.type === "directory" && !collapsedPaths.has(current.path)) {
+    const children = current.children ?? [];
+    if (children.length !== 1) {
+      break;
+    }
+
+    const [onlyChild] = children;
+    if (onlyChild.type !== "directory") {
+      break;
+    }
+
+    current = onlyChild;
+    segments.push(current.name);
+  }
+
+  return {
+    node: current,
+    displayName: segments.join("/"),
+  };
+}
+
 function rowStyle(depth: number): CSSProperties {
   return {
     "--tree-depth": depth,
@@ -116,11 +145,20 @@ function flattenVisibleNodes(
   const visibleNodes: VisibleTreeNode[] = [];
 
   for (const node of nodes) {
-    visibleNodes.push({ node, depth, parentPath });
+    const visibleNode =
+      node.type === "directory"
+        ? compactDirectoryNode(node, collapsedPaths)
+        : { node, displayName: node.name };
+    visibleNodes.push({ ...visibleNode, depth, parentPath });
 
-    if (node.type === "directory" && !collapsedPaths.has(node.path)) {
+    if (visibleNode.node.type === "directory" && !collapsedPaths.has(visibleNode.node.path)) {
       visibleNodes.push(
-        ...flattenVisibleNodes(node.children ?? [], collapsedPaths, depth + 1, node.path),
+        ...flattenVisibleNodes(
+          visibleNode.node.children ?? [],
+          collapsedPaths,
+          depth + 1,
+          visibleNode.node.path,
+        ),
       );
     }
   }
@@ -323,7 +361,7 @@ export function DiffTreePane({
                 >
                   {isDirectory ? (
                     <button
-                      aria-label={expanded ? `Collapse ${item.node.name}` : `Expand ${item.node.name}`}
+                      aria-label={expanded ? `Collapse ${item.displayName}` : `Expand ${item.displayName}`}
                       className="tree-toggle"
                       onClick={(event) => {
                         event.stopPropagation();
@@ -347,7 +385,7 @@ export function DiffTreePane({
                   )}
                   <button
                     aria-expanded={isDirectory ? expanded : undefined}
-                    aria-label={itemAriaLabel(item.node)}
+                    aria-label={isDirectory ? item.displayName : itemAriaLabel(item.node)}
                     className={`tree-entry${isDirectory ? " tree-entry-directory" : " tree-entry-file"}${selected ? " tree-entry-selected" : ""}`}
                     onClick={() => handleSelect(item.node)}
                     onContextMenu={
@@ -367,6 +405,7 @@ export function DiffTreePane({
                         itemRefs.current.delete(item.node.path);
                       }
                     }}
+                    title={isDirectory ? item.displayName : item.node.path}
                     type="button"
                   >
                     <span className={`tree-entry-main${isDirectory ? " tree-entry-main-directory" : ""}`}>
@@ -377,7 +416,7 @@ export function DiffTreePane({
                       ) : null}
                       <span className={isDirectory ? "tree-directory-label" : "tree-file-content"}>
                         <span className={`tree-file-label${highlightFile ? " tree-file-label-highlight" : ""}`}>
-                          {item.node.name}
+                          {isDirectory ? item.displayName : item.node.name}
                         </span>
                         {!isDirectory && item.node.changeType === "renamed" && item.node.oldPath ? (
                           <span className="tree-file-hint">renamed from {item.node.oldPath}</span>

@@ -61,7 +61,7 @@ describe("DiffTreePane", () => {
     );
   }
 
-  it("renders nested explorer rows with a shared left-aligned name column", () => {
+  it("renders compact nested explorer rows with path context", () => {
     const onSelectFile = vi.fn();
     const { container } = render(
       <DiffTreePane
@@ -94,12 +94,12 @@ describe("DiffTreePane", () => {
       />,
     );
 
-    const directoryRow = screen.getByRole("button", { name: "src" });
+    const directoryRow = screen.getByRole("button", { name: "src/nested" });
     const fileButton = screen.getByRole("button", { name: "deleted.ts" });
     const fileRow = fileButton.closest(".tree-row");
 
     expect(directoryRow?.querySelector(".tree-entry-main")).toBeInTheDocument();
-    expect(fileRow).toHaveAttribute("data-depth", "2");
+    expect(fileRow).toHaveAttribute("data-depth", "1");
     expect(fileButton.querySelector(".tree-entry-main")).toBeInTheDocument();
     expect(fileButton.querySelector(".tree-file-icon")).toBeInTheDocument();
     expect(within(fileRow as HTMLElement).getByText("D")).toHaveClass("tree-file-status");
@@ -137,11 +137,7 @@ describe("DiffTreePane", () => {
     fileButton.focus();
     fireEvent.keyDown(fileButton, { key: "ArrowUp" });
 
-    expect(screen.getByRole("button", { name: "nested" })).toHaveFocus();
-
-    fireEvent.keyDown(screen.getByRole("button", { name: "nested" }), { key: "ArrowUp" });
-
-    expect(screen.getByRole("button", { name: "src" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "src/nested" })).toHaveFocus();
   });
 
   it("toggles a review checkbox and reports the new state with the review progress", () => {
