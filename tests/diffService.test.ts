@@ -26,9 +26,13 @@ function runGit(cwd: string, args: string[]) {
 function createRepo() {
   const repoRoot = makeTempDir("diff-worktree-diff-");
   runGit(repoRoot, ["init", "--initial-branch=main"]);
+  configureRepo(repoRoot);
+  return repoRoot;
+}
+
+function configureRepo(repoRoot: string) {
   runGit(repoRoot, ["config", "user.name", "Test User"]);
   runGit(repoRoot, ["config", "user.email", "test@example.com"]);
-  return repoRoot;
 }
 
 function commitFile(repoRoot: string, filePath: string, content: string, message: string) {
@@ -85,6 +89,32 @@ describe("getDiffFile", () => {
       changeType: "deleted",
       left: "export const gone = true;\n",
       right: "",
+    });
+  });
+
+  it("returns submodule commit pointers instead of reading the workspace directory", async () => {
+    const submoduleRoot = createRepo();
+    commitFile(submoduleRoot, "entry.txt", "base\n", "feat: base entry");
+
+    const repoRoot = createRepo();
+    runGit(repoRoot, ["-c", "protocol.file.allow=always", "submodule", "add", submoduleRoot, "vendor-lib"]);
+    runGit(repoRoot, ["commit", "-m", "feat: add external submodule"]);
+    const oldOid = runGit(repoRoot, ["rev-parse", "main:vendor-lib"]);
+
+    const checkoutRoot = path.join(repoRoot, "vendor-lib");
+    configureRepo(checkoutRoot);
+    fs.writeFileSync(path.join(checkoutRoot, "entry.txt"), "updated\n");
+    runGit(checkoutRoot, ["add", "entry.txt"]);
+    runGit(checkoutRoot, ["commit", "-m", "feat: update entry"]);
+    const newOid = runGit(checkoutRoot, ["rev-parse", "HEAD"]);
+
+    await expect(getDiffFile(repoRoot, "main", "vendor-lib")).resolves.toMatchObject({
+      path: "vendor-lib",
+      changeType: "modified",
+      left: `Subproject commit ${oldOid}\n`,
+      right: `Subproject commit ${newOid}\n`,
+      isBinary: false,
+      tooLarge: false,
     });
   });
 });

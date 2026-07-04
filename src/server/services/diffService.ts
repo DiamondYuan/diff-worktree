@@ -13,6 +13,10 @@ interface DiffEntry {
   path: string;
   changeType: ChangeType;
   oldPath?: string;
+  oldMode?: string;
+  newMode?: string;
+  oldOid?: string;
+  newOid?: string;
 }
 
 interface FileReadResult {
@@ -69,9 +73,42 @@ async function readGitFile(repoRoot: string, baseBranch: string, filePath: strin
   }
 }
 
+function isGitlinkMode(mode?: string) {
+  return mode === "160000";
+}
+
+function readSubmoduleCommit(oid?: string): FileReadResult {
+  const content = oid && !/^0+$/.test(oid) ? `Subproject commit ${oid}\n` : "";
+  return {
+    content,
+    isBinary: false,
+    tooLarge: false,
+  };
+}
+
+async function readWorkspaceSubmoduleCommit(repoRoot: string, filePath: string, oid?: string): Promise<FileReadResult> {
+  if (oid && !/^0+$/.test(oid)) {
+    return readSubmoduleCommit(oid);
+  }
+
+  try {
+    return readSubmoduleCommit(await runGit(path.join(repoRoot, filePath), ["rev-parse", "HEAD"]));
+  } catch {
+    return readSubmoduleCommit(oid);
+  }
+}
+
 function readWorkspaceFile(repoRoot: string, filePath: string): FileReadResult {
   const absolutePath = path.join(repoRoot, filePath);
   if (!fs.existsSync(absolutePath)) {
+    return {
+      content: "",
+      isBinary: false,
+      tooLarge: false,
+    };
+  }
+
+  if (!fs.statSync(absolutePath).isFile()) {
     return {
       content: "",
       isBinary: false,
@@ -92,8 +129,15 @@ async function readEntryDiff(
   const left =
     entry.changeType === "added"
       ? EMPTY_RESULT
-      : await readGitFile(repoRoot, baseBranch, entry.oldPath ?? entry.path);
-  const right = entry.changeType === "deleted" ? EMPTY_RESULT : readWorkspaceFile(repoRoot, entry.path);
+      : isGitlinkMode(entry.oldMode)
+        ? readSubmoduleCommit(entry.oldOid)
+        : await readGitFile(repoRoot, baseBranch, entry.oldPath ?? entry.path);
+  const right =
+    entry.changeType === "deleted"
+      ? EMPTY_RESULT
+      : isGitlinkMode(entry.newMode)
+        ? await readWorkspaceSubmoduleCommit(repoRoot, entry.path, entry.newOid)
+        : readWorkspaceFile(repoRoot, entry.path);
 
   return { left, right };
 }
@@ -118,33 +162,37 @@ function computeReviewHash(
     .digest("hex");
 }
 
-function parseTrackedDiffLine(line: string): DiffEntry {
-  const parts = line.split("\t");
-  const status = parts[0];
+function parseRawDiffLine(line: string): DiffEntry {
+  const [metadata, ...paths] = line.slice(1).split("\t");
+  const [oldMode, newMode, oldOid, newOid, status] = metadata.split(" ");
   const code = status[0];
 
   switch (code) {
     case "A":
-      return { path: parts[1], changeType: "added" };
+      return { path: paths[0], changeType: "added", oldMode, newMode, oldOid, newOid };
     case "M":
-      return { path: parts[1], changeType: "modified" };
+      return { path: paths[0], changeType: "modified", oldMode, newMode, oldOid, newOid };
     case "D":
-      return { path: parts[1], changeType: "deleted" };
+      return { path: paths[0], changeType: "deleted", oldMode, newMode, oldOid, newOid };
     case "R":
       return {
-        path: parts[2],
+        path: paths[1],
         changeType: "renamed",
-        oldPath: parts[1],
+        oldPath: paths[0],
+        oldMode,
+        newMode,
+        oldOid,
+        newOid,
       };
     default:
-      return { path: parts[1], changeType: "modified" };
+      return { path: paths[0], changeType: "modified", oldMode, newMode, oldOid, newOid };
   }
 }
 
 async function listDiffEntries(repoRoot: string, baseBranch: string): Promise<DiffEntry[]> {
-  const trackedOutput = await runGit(repoRoot, ["diff", "--find-renames", "--name-status", baseBranch]);
+  const trackedOutput = await runGit(repoRoot, ["diff", "--raw", "--no-abbrev", "--find-renames", baseBranch]);
   const trackedEntries = trackedOutput
-    ? trackedOutput.split("\n").filter(Boolean).map(parseTrackedDiffLine)
+    ? trackedOutput.split("\n").filter(Boolean).map(parseRawDiffLine)
     : [];
 
   const untrackedOutput = await runGit(repoRoot, ["ls-files", "--others", "--exclude-standard"]);
